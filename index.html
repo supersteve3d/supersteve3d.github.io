@@ -8,9 +8,6 @@
 	</head>
 	<body>
 	
-	<script>
-	  document.querySelector("body").requestFullscreen();
-	</script>
 		
 
 		<script type="importmap">
@@ -135,6 +132,7 @@
 				const toneMappingFolder = gui.addFolder( 'Tone Mapping' );
 				toneMappingFolder.add( renderer, 'toneMappingExposure', 0.1, 2 ).name( 'exposure' );
 
+				gui.close(); 
 			}
 
 			function onWindowResize() {
