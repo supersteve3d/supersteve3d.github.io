@@ -25,7 +25,7 @@
 			}
 
 			main {
-				width: min( 1120px, calc( 100% - 32px ) );
+				width: min( 1320px, calc( 100% - 32px ) );
 				margin: 0 auto;
 				padding: 48px 0 64px;
 			}
@@ -54,14 +54,16 @@
 
 			.projects {
 				display: grid;
-				grid-template-columns: repeat( auto-fit, minmax( min( 100%, 280px ), 1fr ) );
-				gap: 20px;
+				grid-template-columns: repeat( auto-fill, minmax( min( 100%, 280px ), 400px ) );
+				gap: 24px;
+				align-items: start;
+				justify-content: start;
 			}
 
 			.project-card {
 				display: grid;
 				overflow: hidden;
-				min-height: 360px;
+				width: min( 100%, 400px );
 				border: 1px solid rgba( 255, 255, 255, 0.13 );
 				border-radius: 8px;
 				background: rgba( 255, 255, 255, 0.05 );
@@ -79,12 +81,12 @@
 				outline: none;
 			}
 
-			.thumbnail {
-				min-height: 230px;
-				background:
-					linear-gradient( 180deg, rgba( 9, 10, 13, 0 ) 20%, rgba( 9, 10, 13, 0.72 ) 100% ),
-					url( "models/gltf/DamagedHelmet/glTF/Default_albedo.jpg" ) center / cover,
-					#242b2b;
+			.project-thumbnail {
+				display: block;
+				width: 100%;
+				aspect-ratio: 1 / 1;
+				background: #242b2b;
+				object-fit: cover;
 			}
 
 			.project-copy {
@@ -129,7 +131,7 @@
 
 			<section class="projects" aria-label="Projects">
 				<a class="project-card" href="projects/model-view-test/">
-					<div class="thumbnail" role="img" aria-label="Damaged Helmet model texture preview"></div>
+					<img class="project-thumbnail" src="assets/thumbnails/model-view-test.png" alt="Model View Test screenshot" onerror="this.onerror=null; this.src='models/gltf/DamagedHelmet/glTF/Default_albedo.jpg';">
 					<div class="project-copy">
 						<h2>Model View Test</h2>
 						<p>Interactive WebGPU Three.js scene with bloom controls and the Damaged Helmet model.</p>
