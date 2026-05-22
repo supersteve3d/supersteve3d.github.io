@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steve's Vibe Coded Chess Program</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .home-link {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1000;
+            padding: 10px 14px;
+            border-radius: 6px;
+            background: rgba(10, 12, 16, 0.78);
+            color: #ffffff;
+            font: 13px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            text-decoration: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .home-link:focus-visible,
+        .home-link:hover {
+            background: rgba(36, 43, 56, 0.9);
+        }
+    </style>
+    <!-- Chess.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+</head>
+<body>
+    <a class="home-link" href="../../">Projects</a>
+
+    <!-- Background Decoration -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <span class="logo-icon">👑</span>
+                <h1>Steve's <span>Vibe Chess</span></h1>
+            </div>
+            <div class="status-indicator" id="game-status-text">White's Turn</div>
+        </header>
+
+        <!-- Main Layout -->
+        <main class="game-layout">
+            <!-- Left Side / Control Panel -->
+            <section class="panel control-panel">
+                <div class="panel-section">
+                    <h2>Game Settings</h2>
+
+                    <div class="form-group">
+                        <label for="game-mode">Opponent</label>
+                        <select id="game-mode" class="select-control">
+                            <option value="ai">Vs. Computer (AI)</option>
+                            <option value="local">Vs. Local Player</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="ai-difficulty-group">
+                        <label for="ai-difficulty">AI Difficulty</label>
+                        <select id="ai-difficulty" class="select-control">
+                            <option value="easy">Easy (Novice)</option>
+                            <option value="medium" selected>Medium (Challenger)</option>
+                            <option value="hard">Hard (Master)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <h2>Controls</h2>
+                    <div class="controls-grid">
+                        <button id="btn-restart" class="btn btn-primary" title="Restart Game">
+                            <svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                            Restart
+                        </button>
+                        <button id="btn-undo" class="btn btn-secondary" title="Undo Last Move">
+                            <svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+                            Undo
+                        </button>
+                        <button id="btn-flip" class="btn btn-secondary" title="Flip Board">
+                            <svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z"/></svg>
+                            Flip
+                        </button>
+                        <button id="btn-sound" class="btn btn-secondary" title="Toggle Sound">
+                            <svg id="sound-icon-on" class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+                            <svg id="sound-icon-off" class="btn-icon hidden" viewBox="0 0 24 24"><path fill="currentColor" d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.21.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+                            Sound
+                        </button>
+                        <button id="btn-export" class="btn btn-secondary" style="grid-column: span 2; margin-top: 4px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); color: #a5b4fc;" title="Export Game to Lichess">
+                            <svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                            <span id="btn-export-text">Export to Lichess (PGN)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel-section progress-section flex-grow">
+                    <h2>Game Info</h2>
+                    <div class="captured-box">
+                        <div class="captured-row" id="captured-by-black">
+                            <span class="captured-label">Black captured:</span>
+                            <div class="captured-pieces" id="black-captures"></div>
+                        </div>
+                        <div class="captured-row" id="captured-by-white">
+                            <span class="captured-label">White captured:</span>
+                            <div class="captured-pieces" id="white-captures"></div>
+                        </div>
+                    </div>
+
+                    <div class="move-history-container">
+                        <h3>Move History</h3>
+                        <div class="move-history-scroll">
+                            <table class="move-history-table">
+                                <thead id="history-header">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>White</th>
+                                        <th>Black</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="move-history-body">
+                                    <!-- Moves will be appended here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Center Side / Chess Board Area -->
+            <section class="board-area">
+                <!-- Player Black Info Card -->
+                <div class="player-card" id="player-black-card">
+                    <div class="player-avatar black-avatar">🤖</div>
+                    <div class="player-details">
+                        <span class="player-name" id="black-player-name">Computer (AI)</span>
+                        <span class="player-status" id="black-player-status">Waiting</span>
+                    </div>
+                    <div class="thinking-spinner hidden" id="black-thinking-spinner"></div>
+                </div>
+
+                <!-- Board Container -->
+                <div class="board-wrapper">
+                    <div id="chess-board" class="chess-board"></div>
+
+                    <!-- Overlay Banner for Game End States -->
+                    <div id="game-over-overlay" class="overlay hidden">
+                        <div class="overlay-card">
+                            <div class="overlay-icon">🏆</div>
+                            <h2 id="overlay-title">Checkmate!</h2>
+                            <p id="overlay-description">White wins the match.</p>
+                            <button id="btn-overlay-restart" class="btn btn-primary">Play Again</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Player White Info Card -->
+                <div class="player-card active" id="player-white-card">
+                    <div class="player-avatar white-avatar">👤</div>
+                    <div class="player-details">
+                        <span class="player-name" id="white-player-name">Player 1 (White)</span>
+                        <span class="player-status" id="white-player-status">Your Turn</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Piece Promotion Dialog -->
+    <div id="promotion-overlay" class="overlay hidden">
+        <div class="overlay-card promotion-card">
+            <h3>Promote Pawn</h3>
+            <p>Select which piece to promote your pawn to:</p>
+            <div class="promotion-options">
+                <button class="promo-btn" data-piece="q" title="Queen"><span class="promo-icon" id="promo-q">♛</span>Queen</button>
+                <button class="promo-btn" data-piece="r" title="Rook"><span class="promo-icon" id="promo-r">♜</span>Rook</button>
+                <button class="promo-btn" data-piece="b" title="Bishop"><span class="promo-icon" id="promo-b">♝</span>Bishop</button>
+                <button class="promo-btn" data-piece="n" title="Knight"><span class="promo-icon" id="promo-n">♞</span>Knight</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main JavaScript Code -->
+    <script src="app.js"></script>
+</body>
+</html>
