@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>supersteve3d model view test</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="../../example.css">
+		<style>
+			.home-link {
+				position: fixed;
+				top: 16px;
+				left: 16px;
+				z-index: 10;
+				padding: 10px 14px;
+				border-radius: 6px;
+				background: rgba( 10, 12, 16, 0.78 );
+				color: #ffffff;
+				font: 13px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+				text-decoration: none;
+				backdrop-filter: blur( 10px );
+			}
+
+			.home-link:focus-visible,
+			.home-link:hover {
+				background: rgba( 36, 43, 56, 0.9 );
+			}
+		</style>
+	</head>
+	<body>
+		<a class="home-link" href="../../">Projects</a>
+
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../../build/three.webgpu.js",
+					"three/webgpu": "../../build/three.webgpu.js",
+					"three/tsl": "../../build/three.tsl.js",
+					"three/addons/": "../../jsm/"
+				}
+			}
+		</script>
+
+		<script type="module">
+
+			import * as THREE from 'three/webgpu';
+			import { pass, mrt, output, emissive, vec4 } from 'three/tsl';
+			import { bloom } from 'three/addons/tsl/display/BloomNode.js';
+
+			import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+
+			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+			import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+			import { Inspector } from 'three/addons/inspector/Inspector.js';
+
+			let camera, scene, renderer;
+			let renderPipeline;
+
+			init();
+
+			function init() {
+
+				const container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				//
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.25, 20 );
+				camera.position.set( - 1.8, 0.6, 2.7 );
+
+				scene = new THREE.Scene();
+
+				new HDRLoader()
+					.setPath( '../../textures/equirectangular/' )
+					.load( 'moonless_golf_1k.hdr', function ( texture ) {
+
+						texture.mapping = THREE.EquirectangularReflectionMapping;
+
+						scene.background = texture;
+						scene.environment = texture;
+
+						// model
+
+						const loader = new GLTFLoader().setPath( '../../models/gltf/DamagedHelmet/glTF/' );
+						loader.load( 'DamagedHelmet.gltf', function ( gltf ) {
+
+							scene.add( gltf.scene );
+
+						} );
+
+					} );
+
+				//
+
+				renderer = new THREE.WebGPURenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.setAnimationLoop( render );
+				renderer.toneMapping = THREE.ACESFilmicToneMapping;
+				renderer.inspector = new Inspector();
+				container.appendChild( renderer.domElement );
+
+				//
+
+				const scenePass = pass( scene, camera );
+
+				// set up MRT with emissive
+
+				const mrtNode = mrt( {
+					output: output,
+					emissive: vec4( emissive, output.a )
+				} );
+
+				mrtNode.setBlendMode( 'emissive', new THREE.BlendMode( THREE.NormalBlending ) );
+
+				scenePass.setMRT( mrtNode );
+
+				// optimize the bandwidth
+
+				const emissiveTexture = scenePass.getTexture( 'emissive' );
+				emissiveTexture.type = THREE.UnsignedByteType;
+
+				//
+
+				const outputPass = scenePass.getTextureNode().toInspector( 'Color' );
+				const emissivePass = scenePass.getTextureNode( 'emissive' ).toInspector( 'Emissive' );
+
+				const bloomPass = bloom( emissivePass, 2.5, .5 );
+
+				renderPipeline = new THREE.RenderPipeline( renderer );
+				renderPipeline.outputNode = outputPass.add( bloomPass );
+
+				//
+
+				const controls = new OrbitControls( camera, renderer.domElement );
+				controls.minDistance = 2;
+				controls.maxDistance = 10;
+				controls.target.set( 0, 0, - 0.2 );
+				controls.update();
+
+				window.addEventListener( 'resize', onWindowResize );
+
+				//
+
+				const gui = renderer.inspector.createParameters( 'Settings' );
+
+				const bloomFolder = gui.addFolder( 'Bloom' );
+				bloomFolder.add( bloomPass.strength, 'value', 0.0, 5.0 ).name( 'strength' );
+				bloomFolder.add( bloomPass.radius, 'value', 0.0, 1.0 ).name( 'radius' );
+
+				const toneMappingFolder = gui.addFolder( 'Tone Mapping' );
+				toneMappingFolder.add( renderer, 'toneMappingExposure', 0.1, 2 ).name( 'exposure' );
+
+				gui.close();
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			//
+
+			function render() {
+
+				renderPipeline.render();
+
+			}
+
+		</script>
+
+	</body>
+</html>
