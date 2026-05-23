@@ -12,7 +12,7 @@ const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const SUPABASE_LIVE_TABLE = 'browser_chess_live_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
 const HEAD_TO_HEAD_PLAYERS = ['Mum', 'David'];
-const APP_VERSION = '5.1';
+const APP_VERSION = '5.2';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
@@ -1149,6 +1149,15 @@ function stepReview(delta) {
     enterReviewAtPly(getReviewPly() + delta);
 }
 
+function updateReviewControls() {
+    const prevButton = document.getElementById('btn-review-prev');
+    const nextButton = document.getElementById('btn-review-next');
+    const livePly = getLivePlyCount();
+    const reviewPlyValue = getReviewPly();
+    prevButton.disabled = livePly === 0 || reviewPlyValue <= 0;
+    nextButton.disabled = livePly === 0 || reviewPlyValue >= livePly;
+}
+
 function handleBoardClick(e) {
     const squareElement = e.target.closest('.square');
     if (!squareElement || !e.currentTarget.contains(squareElement)) return;
@@ -1286,6 +1295,7 @@ function updateUI() {
     updateMoveHistory();
     updateCapturedPieces();
     updateGameStatus();
+    updateReviewControls();
 }
 
 // Status message bar (White's Turn, Check, Checkmate, etc.)
@@ -1832,6 +1842,8 @@ function restartGame(skipLiveLeave = false) {
 document.getElementById('btn-restart').addEventListener('click', restartGame);
 document.getElementById('btn-overlay-restart').addEventListener('click', restartGame);
 document.getElementById('btn-overlay-review').addEventListener('click', reviewFinishedGame);
+document.getElementById('btn-review-prev').addEventListener('click', () => stepReview(-1));
+document.getElementById('btn-review-next').addEventListener('click', () => stepReview(1));
 
 // Undo Move
 document.getElementById('btn-undo').addEventListener('click', () => {

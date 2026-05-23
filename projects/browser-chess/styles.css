@@ -212,14 +212,75 @@ h1, h2, h3, .logo-area {
 .game-layout {
     display: grid;
     grid-template-columns: minmax(270px, 310px) minmax(460px, 1fr) minmax(320px, 360px);
+    grid-template-areas:
+        "left board right";
     gap: 24px;
     align-items: start;
     min-width: 0;
 }
 
+.side-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 100%;
+    min-width: 0;
+    align-self: start;
+}
+
+.side-stack > .panel {
+    width: 100%;
+}
+
+.left-stack {
+    grid-area: left;
+}
+
+.right-stack {
+    grid-area: right;
+}
+
+.board-area {
+    grid-area: board;
+}
+
+.game-info-panel {
+    grid-area: info;
+}
+
+.saved-games-panel {
+    grid-area: saved;
+}
+
 @media (max-width: 1180px) {
     .game-layout {
         grid-template-columns: 1fr;
+        grid-template-areas:
+            "scoreboard"
+            "settings"
+            "board"
+            "info"
+            "saved";
+    }
+
+    .side-stack {
+        display: contents;
+    }
+
+    .scoreboard-panel {
+        grid-area: scoreboard;
+    }
+
+    .control-panel {
+        grid-area: settings;
+    }
+
+    .game-info-panel {
+        grid-area: info;
+    }
+
+    .saved-games-panel {
+        grid-area: saved;
     }
 
     .app-container {
@@ -243,7 +304,9 @@ h1, h2, h3, .logo-area {
 }
 
 .control-panel,
-.records-panel {
+.scoreboard-panel,
+.game-info-panel,
+.saved-games-panel {
     align-self: start;
 }
 
@@ -548,6 +611,17 @@ h1, h2, h3, .logo-area {
     transform: translateY(-1px);
 }
 
+.icon-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.42;
+    transform: none;
+}
+
+.icon-btn:disabled:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: none;
+}
+
 .icon-btn svg {
     width: 18px;
     height: 18px;
@@ -735,11 +809,30 @@ h1, h2, h3, .logo-area {
     min-height: 180px;
 }
 
+.move-history-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
 .move-history-container h3 {
     font-size: 14px;
     font-weight: 600;
     color: var(--text-muted);
-    margin-bottom: 10px;
+    margin-bottom: 0;
+}
+
+.review-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.review-controls .icon-btn {
+    width: 38px;
+    height: 38px;
 }
 
 .move-history-scroll {
