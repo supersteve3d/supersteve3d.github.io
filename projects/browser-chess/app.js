@@ -9,8 +9,10 @@ let game = new Chess();
 const SUPABASE_URL = 'https://duvohiskcdlsvawyvhpq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_SnqVU4BFVL237B2ZOJeRVg_0KyPpr_o';
 const SUPABASE_GAMES_TABLE = 'browser_chess_games';
+const SUPABASE_LIVE_TABLE = 'browser_chess_live_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
-const APP_VERSION = '4.3';
+const HEAD_TO_HEAD_PLAYERS = ['Mum', 'David'];
+const APP_VERSION = '5.0';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
@@ -35,6 +37,9 @@ let gameOverOverlayDismissed = false;
 let savedGames = [];
 let currentGameSaved = false;
 let currentLoadedGameId = null;
+let liveGame = null;
+let liveSyncTimer = null;
+let liveSyncInFlight = false;
 
 // Piece-Square Tables (PST) for AI positional evaluation
 // Values represent hundredths of a pawn (centipawns)
@@ -227,6 +232,50 @@ function setSaveStatus(message, type = '') {
     if (type) el.classList.add(type);
 }
 
+function setLiveStatus(message, type = '') {
+    const el = document.getElementById('online-room-status');
+    if (!el) return;
+    el.textContent = message;
+    el.classList.remove('success', 'error');
+    if (type) el.classList.add(type);
+}
+
+function normalizeRoomCode(value) {
+    return (value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+}
+
+function generateRoomCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 4; i++) {
+        code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
+}
+
+function getOpponentName(player) {
+    return player === 'Mum' ? 'David' : 'Mum';
+}
+
+function getPlayerNameForColor(color) {
+    if (!liveGame) return color === 'w' ? currentPlayer : 'Player 2';
+    return color === 'w' ? liveGame.whitePlayer : liveGame.blackPlayer;
+}
+
+async function supabaseRequest(path, options = {}) {
+    const headers = getSupabaseHeaders(options.headers || {});
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+        ...options,
+        headers
+    });
+    if (!response.ok) {
+        throw new Error(`Supabase returned ${response.status}`);
+    }
+    if (response.status === 204) return null;
+    const text = await response.text();
+    return text ? JSON.parse(text) : null;
+}
+
 function formatSavedGameDate(value) {
     if (!value) return 'Unknown date';
     return new Intl.DateTimeFormat(undefined, {
@@ -288,7 +337,7 @@ function getCompetitionPoints(savedGame) {
     return 0;
 }
 
-function buildSavedGamePayload() {
+function buildSavedGamePayload(overrides = {}) {
     const history = game.history({ verbose: true });
     return {
         player: currentPlayer,
@@ -297,7 +346,8 @@ function buildSavedGamePayload() {
         opponent: gameMode === 'ai' ? `Computer (${aiDifficulty})` : 'Local Player',
         game_mode: gameMode,
         ai_difficulty: gameMode === 'ai' ? aiDifficulty : null,
-        half_moves: history.length
+        half_moves: history.length,
+        ...overrides
     };
 }
 
@@ -328,6 +378,7 @@ async function fetchSavedGames() {
 }
 
 async function saveCompletedGame() {
+    if (gameMode === 'online') return;
     if (currentGameSaved || currentLoadedGameId || !game.game_over()) return;
 
     const payload = buildSavedGamePayload();
@@ -509,6 +560,372 @@ function loadSavedGame(savedGame) {
     setSaveStatus(`Loaded ${savedGame.player}'s saved game.`, 'success');
 }
 
+function getLivePlayerColor() {
+    return liveGame ? liveGame.color : null;
+}
+
+function canControlPiece(piece) {
+    if (!piece) return false;
+    if (gameMode === 'ai') return piece.color === 'w' || (piece.color === 'b' && isAiThinking);
+    if (gameMode === 'local') return true;
+    if (gameMode !== 'online' || !liveGame) return false;
+    if (!liveGame.whiteReady || !liveGame.blackReady) return false;
+    return piece.color === liveGame.color && game.turn() === liveGame.color && !game.game_over();
+}
+
+function updateLiveRoomDisplay() {
+    const panel = document.getElementById('online-room-panel');
+    const codeDisplay = document.getElementById('live-room-code-display');
+    const leaveButton = document.getElementById('btn-leave-room');
+    const createButton = document.getElementById('btn-create-room');
+    const joinButton = document.getElementById('btn-join-room');
+    const roomInput = document.getElementById('room-code-input');
+
+    panel.classList.toggle('hidden', gameMode !== 'online');
+    if (gameMode !== 'online') return;
+
+    codeDisplay.textContent = liveGame ? liveGame.code : 'Not connected';
+    leaveButton.classList.toggle('hidden', !liveGame);
+    createButton.disabled = !!liveGame;
+    joinButton.disabled = !!liveGame;
+    roomInput.disabled = !!liveGame;
+}
+
+function applyLiveRoomState(row, message = '') {
+    if (!row) return;
+
+    const loaded = row.pgn ? game.load_pgn(row.pgn) : (game.reset() || true);
+    if (!loaded) {
+        setLiveStatus('Could not read the live game position.', 'error');
+        return;
+    }
+
+    liveGame = {
+        ...liveGame,
+        code: row.code,
+        color: currentPlayer === row.black_player ? 'b' : 'w',
+        whitePlayer: row.white_player,
+        blackPlayer: row.black_player,
+        moveCount: row.move_count || 0,
+        status: row.status,
+        archiveSaved: row.archive_saved,
+        whiteReady: row.white_ready,
+        blackReady: row.black_ready
+    };
+
+    currentLoadedGameId = row.code;
+    currentGameSaved = !!row.archive_saved;
+    lastMove = row.last_move || null;
+    reviewPly = null;
+    selectedSquare = null;
+    validMoves = [];
+    gameOverOverlayDismissed = false;
+    document.getElementById('white-player-name').textContent = `${row.white_player} (White)`;
+    document.getElementById('black-player-name').textContent = `${row.black_player} (Black)`;
+    updateLiveRoomDisplay();
+    updateUI();
+
+    if (message) {
+        setLiveStatus(message, 'success');
+    } else if (row.status === 'active' && (!row.white_ready || !row.black_ready)) {
+        const waitingFor = row.white_ready ? row.black_player : row.white_player;
+        setLiveStatus(`Room ${row.code} ready. Waiting for ${waitingFor} to join.`, 'success');
+    } else if (row.status === 'active') {
+        setLiveStatus(`Room ${row.code} synced. You are ${liveGame.color === 'w' ? 'White' : 'Black'}.`, 'success');
+    } else {
+        setLiveStatus(`Room ${row.code} finished.`, 'success');
+    }
+
+    if (row.status === 'finished' && !row.archive_saved) {
+        archiveCompletedLiveGame(row);
+    }
+}
+
+async function fetchLiveRoom(code) {
+    const rows = await supabaseRequest(
+        `${SUPABASE_LIVE_TABLE}?code=eq.${encodeURIComponent(code)}&select=*&limit=1`,
+        { headers: { Accept: 'application/json' } }
+    );
+    return rows && rows.length ? rows[0] : null;
+}
+
+function startLiveSync() {
+    stopLiveSync();
+    liveSyncTimer = window.setInterval(syncLiveGame, 1500);
+}
+
+function stopLiveSync() {
+    if (liveSyncTimer) {
+        window.clearInterval(liveSyncTimer);
+        liveSyncTimer = null;
+    }
+    liveSyncInFlight = false;
+}
+
+async function createLiveRoom() {
+    if (!HEAD_TO_HEAD_PLAYERS.includes(currentPlayer)) {
+        setLiveStatus('Choose Mum or David before creating an online room.', 'error');
+        return;
+    }
+
+    const opponent = getOpponentName(currentPlayer);
+    setLiveStatus('Creating room...');
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+        const code = generateRoomCode();
+        try {
+            const rows = await supabaseRequest(SUPABASE_LIVE_TABLE, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Prefer: 'return=representation'
+                },
+                body: JSON.stringify({
+                    code,
+                    white_player: currentPlayer,
+                    black_player: opponent,
+                    white_ready: true,
+                    black_ready: false,
+                    pgn: '',
+                    fen: game.fen(),
+                    move_count: 0,
+                    status: 'active',
+                    archive_saved: false
+                })
+            });
+            boardFlipped = false;
+            applyLiveRoomState(rows[0], `Room ${code} created. ${opponent} can join with this code.`);
+            startLiveSync();
+            return;
+        } catch (error) {
+            if (attempt === 4) {
+                console.error('Could not create live room:', error);
+                setLiveStatus('Could not create a room. Paste the v5.0 Supabase SQL if you have not yet.', 'error');
+            }
+        }
+    }
+}
+
+async function joinLiveRoom() {
+    if (!HEAD_TO_HEAD_PLAYERS.includes(currentPlayer)) {
+        setLiveStatus('Choose Mum or David before joining an online room.', 'error');
+        return;
+    }
+
+    const code = normalizeRoomCode(document.getElementById('room-code-input').value);
+    if (!code) {
+        setLiveStatus('Enter the room code from the other phone.', 'error');
+        return;
+    }
+
+    setLiveStatus(`Joining ${code}...`);
+    try {
+        const room = await fetchLiveRoom(code);
+        if (!room) {
+            setLiveStatus(`No live room found for ${code}.`, 'error');
+            return;
+        }
+        if (![room.white_player, room.black_player].includes(currentPlayer)) {
+            setLiveStatus(`Room ${code} is for ${room.white_player} and ${room.black_player}.`, 'error');
+            return;
+        }
+
+        const readyField = currentPlayer === room.white_player ? 'white_ready' : 'black_ready';
+        const rows = await supabaseRequest(`${SUPABASE_LIVE_TABLE}?code=eq.${encodeURIComponent(code)}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                Prefer: 'return=representation'
+            },
+            body: JSON.stringify({
+                [readyField]: true,
+                updated_at: new Date().toISOString()
+            })
+        });
+        boardFlipped = currentPlayer === room.black_player;
+        applyLiveRoomState(rows[0], `Joined room ${code}. You are ${currentPlayer === room.white_player ? 'White' : 'Black'}.`);
+        startLiveSync();
+    } catch (error) {
+        console.error('Could not join live room:', error);
+        setLiveStatus('Could not join. Check the room code and Supabase table.', 'error');
+    }
+}
+
+async function leaveLiveGame(resetBoard = true) {
+    if (liveGame) {
+        const readyField = liveGame.color === 'w' ? 'white_ready' : 'black_ready';
+        try {
+            await supabaseRequest(`${SUPABASE_LIVE_TABLE}?code=eq.${encodeURIComponent(liveGame.code)}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    [readyField]: false,
+                    updated_at: new Date().toISOString()
+                })
+            });
+        } catch (error) {
+            console.warn('Could not mark live room as left:', error);
+        }
+    }
+
+    stopLiveSync();
+    liveGame = null;
+    currentLoadedGameId = null;
+    currentGameSaved = false;
+    updateLiveRoomDisplay();
+    setLiveStatus('Left the live room.');
+    if (resetBoard) restartGame(true);
+}
+
+async function syncLiveGame() {
+    if (!liveGame || liveSyncInFlight) return;
+    liveSyncInFlight = true;
+    try {
+        const row = await fetchLiveRoom(liveGame.code);
+        if (!row) {
+            setLiveStatus('Live room no longer exists.', 'error');
+            stopLiveSync();
+            return;
+        }
+
+        const localMoves = game.history().length;
+        if (
+            (row.move_count || 0) !== localMoves ||
+            row.status !== liveGame.status ||
+            row.archive_saved !== liveGame.archiveSaved ||
+            row.white_ready !== liveGame.whiteReady ||
+            row.black_ready !== liveGame.blackReady
+        ) {
+            applyLiveRoomState(row);
+        }
+    } catch (error) {
+        console.warn('Live sync failed:', error);
+        setLiveStatus('Live sync paused. Retrying...', 'error');
+    } finally {
+        liveSyncInFlight = false;
+    }
+}
+
+function getLiveGameResultRows(row) {
+    const halfMoves = row.move_count || 0;
+    const common = {
+        pgn: row.pgn || game.pgn(),
+        game_mode: 'online',
+        ai_difficulty: null,
+        half_moves: halfMoves
+    };
+
+    if (row.result === 'draw') {
+        return [
+            { ...common, player: row.white_player, result: 'draw', opponent: row.black_player },
+            { ...common, player: row.black_player, result: 'draw', opponent: row.white_player }
+        ];
+    }
+
+    return [
+        {
+            ...common,
+            player: row.white_player,
+            result: row.winner_player === row.white_player ? 'win' : 'loss',
+            opponent: row.black_player
+        },
+        {
+            ...common,
+            player: row.black_player,
+            result: row.winner_player === row.black_player ? 'win' : 'loss',
+            opponent: row.white_player
+        }
+    ];
+}
+
+async function archiveCompletedLiveGame(row) {
+    try {
+        const claimed = await supabaseRequest(
+            `${SUPABASE_LIVE_TABLE}?code=eq.${encodeURIComponent(row.code)}&archive_saved=eq.false`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Prefer: 'return=representation'
+                },
+                body: JSON.stringify({
+                    archive_saved: true,
+                    updated_at: new Date().toISOString()
+                })
+            }
+        );
+        if (!claimed || claimed.length === 0) return;
+
+        const resultRows = getLiveGameResultRows(row);
+        const createdRows = await supabaseRequest(SUPABASE_GAMES_TABLE, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Prefer: 'return=representation'
+            },
+            body: JSON.stringify(resultRows)
+        });
+        savedGames = [...createdRows, ...savedGames];
+        currentGameSaved = true;
+        renderScoreboard();
+        renderSavedGames();
+        setSaveStatus('Head-to-head game saved.', 'success');
+    } catch (error) {
+        console.error('Could not archive live game:', error);
+        setSaveStatus('Live game finished but was not archived. Check Supabase policies.', 'error');
+    }
+}
+
+async function publishLiveMove(previousMoveCount) {
+    if (!liveGame) return;
+
+    const result = game.in_draw()
+        ? 'draw'
+        : game.in_checkmate()
+            ? 'win'
+            : null;
+    const winnerPlayer = game.in_checkmate()
+        ? getPlayerNameForColor(game.turn() === 'w' ? 'b' : 'w')
+        : null;
+    const status = game.game_over() ? 'finished' : 'active';
+    const payload = {
+        pgn: game.pgn(),
+        fen: game.fen(),
+        move_count: game.history().length,
+        status,
+        result,
+        winner_player: winnerPlayer,
+        last_move: lastMove,
+        updated_at: new Date().toISOString()
+    };
+
+    try {
+        const rows = await supabaseRequest(
+            `${SUPABASE_LIVE_TABLE}?code=eq.${encodeURIComponent(liveGame.code)}&move_count=eq.${previousMoveCount}&status=eq.active`,
+            {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Prefer: 'return=representation'
+                },
+                body: JSON.stringify(payload)
+            }
+        );
+
+        if (!rows || rows.length === 0) {
+            setLiveStatus('Move was not sent because the room changed. Syncing latest board...', 'error');
+            await syncLiveGame();
+            return;
+        }
+
+        applyLiveRoomState(rows[0], status === 'finished' ? 'Game finished and synced.' : 'Move sent.');
+    } catch (error) {
+        console.error('Could not publish live move:', error);
+        setLiveStatus('Could not send move. Syncing latest board...', 'error');
+        await syncLiveGame();
+    }
+}
+
 function openChangelog() {
     document.getElementById('changelog-overlay').classList.remove('hidden');
 }
@@ -611,7 +1028,7 @@ function renderBoard() {
             if (piece) {
                 const pieceDiv = document.createElement('div');
                 pieceDiv.className = `piece ${piece.color === 'w' ? 'white' : 'black'}`;
-                pieceDiv.draggable = !reviewMode && !isAiThinking && (gameMode === 'local' || piece.color === 'w');
+                pieceDiv.draggable = !reviewMode && !isAiThinking && canControlPiece(piece);
 
                 // Standard Staunton representation from Lichess theme
                 pieceDiv.innerHTML = `
@@ -625,7 +1042,7 @@ function renderBoard() {
                         e.preventDefault();
                         return;
                     }
-                    if (gameMode === 'ai' && piece.color === 'b') {
+                    if (!canControlPiece(piece)) {
                         e.preventDefault();
                         return;
                     }
@@ -753,7 +1170,7 @@ function handleBoardClick(e) {
         return;
     }
 
-    if (gameMode === 'ai' && piece.color === 'b') return;
+    if (!canControlPiece(piece)) return;
 
     if (selectedSquare === squareName) {
         selectedSquare = null;
@@ -809,7 +1226,10 @@ document.querySelectorAll('.promo-btn').forEach(btn => {
 // Perform Move state changes
 function executeMove(from, to, promotion = null) {
     if (isReviewing()) return;
+    const movingPiece = game.get(from);
+    if (!canControlPiece(movingPiece)) return;
 
+    const previousMoveCount = game.history().length;
     const isCapture = game.get(to) !== null;
 
     const move = game.move({
@@ -844,6 +1264,11 @@ function executeMove(from, to, promotion = null) {
 
     if (game.game_over()) {
         saveCompletedGame();
+    }
+
+    if (gameMode === 'online') {
+        publishLiveMove(previousMoveCount);
+        return;
     }
 
     // Trigger AI turn if game mode is AI and it is Black's turn
@@ -886,6 +1311,17 @@ function updateGameStatus() {
         return;
     }
 
+    if (gameMode === 'online' && liveGame && (!liveGame.whiteReady || !liveGame.blackReady)) {
+        const waitingFor = liveGame.whiteReady ? liveGame.blackPlayer : liveGame.whitePlayer;
+        statusText.textContent = `Waiting for ${waitingFor}`;
+        statusText.classList.remove('check');
+        whiteCard.classList.toggle('active', liveGame.color === 'w');
+        blackCard.classList.toggle('active', liveGame.color === 'b');
+        document.getElementById('white-player-status').textContent = liveGame.whiteReady ? "Ready" : "Waiting";
+        document.getElementById('black-player-status').textContent = liveGame.blackReady ? "Ready" : "Waiting";
+        return;
+    }
+
     if (game.in_checkmate()) {
         statusText.textContent = "CHECKMATE!";
         statusText.classList.add('check');
@@ -902,19 +1338,25 @@ function updateGameStatus() {
     } else {
         const turn = game.turn();
         if (turn === 'w') {
-            statusText.textContent = game.in_check() ? "WHITE IN CHECK!" : "White's Turn";
+            const whiteName = getPlayerNameForColor('w');
+            statusText.textContent = game.in_check() ? "WHITE IN CHECK!" : `${whiteName}'s Turn`;
             whiteCard.classList.add('active');
             blackCard.classList.remove('active');
 
-            document.getElementById('white-player-status').textContent = "Your Turn";
+            document.getElementById('white-player-status').textContent = gameMode === 'online' && getLivePlayerColor() !== 'w' ? "Their Turn" : "Your Turn";
             document.getElementById('black-player-status').textContent = "Waiting";
         } else {
-            statusText.textContent = game.in_check() ? "BLACK IN CHECK!" : "Black's Turn";
+            const blackName = getPlayerNameForColor('b');
+            statusText.textContent = game.in_check() ? "BLACK IN CHECK!" : `${blackName}'s Turn`;
             blackCard.classList.add('active');
             whiteCard.classList.remove('active');
 
             document.getElementById('white-player-status').textContent = "Waiting";
-            document.getElementById('black-player-status').textContent = gameMode === 'ai' ? "Thinking..." : "Their Turn";
+            document.getElementById('black-player-status').textContent = gameMode === 'ai'
+                ? "Thinking..."
+                : gameMode === 'online' && getLivePlayerColor() === 'b'
+                    ? "Your Turn"
+                    : "Their Turn";
         }
 
         if (game.in_check()) {
@@ -1274,6 +1716,9 @@ function minimaxSearch(depth, isMaximizing, alpha, beta) {
 // -------------------------------------------------------------
 
 document.getElementById('player-name').addEventListener('change', (e) => {
+    if (liveGame) {
+        leaveLiveGame();
+    }
     updateSelectedPlayer(e.target.value);
     if (game.history().length === 0) {
         setSaveStatus(`Ready for ${currentPlayer}.`);
@@ -1296,9 +1741,20 @@ document.getElementById('scoring-overlay').addEventListener('click', (e) => {
         closeScoringGuide();
     }
 });
+document.getElementById('btn-create-room').addEventListener('click', createLiveRoom);
+document.getElementById('btn-join-room').addEventListener('click', joinLiveRoom);
+document.getElementById('btn-leave-room').addEventListener('click', () => leaveLiveGame());
+document.getElementById('room-code-input').addEventListener('input', (e) => {
+    e.target.value = normalizeRoomCode(e.target.value);
+});
 
 // Toggle Opponent (AI vs Local)
 document.getElementById('game-mode').addEventListener('change', (e) => {
+    if (liveGame) {
+        leaveLiveGame(false);
+    } else {
+        stopLiveSync();
+    }
     gameMode = e.target.value;
     const aiGroup = document.getElementById('ai-difficulty-group');
     const blackName = document.getElementById('black-player-name');
@@ -1306,11 +1762,20 @@ document.getElementById('game-mode').addEventListener('change', (e) => {
     if (gameMode === 'ai') {
         aiGroup.classList.remove('hidden');
         blackName.textContent = `Computer (AI - ${aiDifficulty.charAt(0).toUpperCase() + aiDifficulty.slice(1)})`;
+    } else if (gameMode === 'online') {
+        aiGroup.classList.add('hidden');
+        blackName.textContent = "Waiting for room";
+        if (!HEAD_TO_HEAD_PLAYERS.includes(currentPlayer)) {
+            setLiveStatus('Online games are only for Mum and David. Choose one of those names first.', 'error');
+        } else {
+            setLiveStatus('Create a room or enter the code from the other phone.');
+        }
     } else {
         aiGroup.classList.add('hidden');
         blackName.textContent = "Player 2 (Black)";
     }
 
+    updateLiveRoomDisplay();
     restartGame();
 });
 
@@ -1345,7 +1810,10 @@ document.getElementById('btn-flip').addEventListener('click', () => {
 });
 
 // Restart Game
-function restartGame() {
+function restartGame(skipLiveLeave = false) {
+    if (gameMode === 'online' && liveGame && !skipLiveLeave) {
+        leaveLiveGame(false);
+    }
     game.reset();
     selectedSquare = null;
     validMoves = [];
@@ -1365,6 +1833,10 @@ document.getElementById('btn-overlay-review').addEventListener('click', reviewFi
 // Undo Move
 document.getElementById('btn-undo').addEventListener('click', () => {
     if (isAiThinking) return;
+    if (gameMode === 'online') {
+        setLiveStatus('Undo is disabled in online rooms so both phones stay in sync.', 'error');
+        return;
+    }
     reviewPly = null;
 
     if (gameMode === 'ai') {
@@ -1482,6 +1954,7 @@ document.addEventListener('click', (e) => {
 window.addEventListener('load', () => {
     document.getElementById('version-badge').textContent = `v${APP_VERSION}`;
     updateSelectedPlayer(document.getElementById('player-name').value);
+    updateLiveRoomDisplay();
     updateUI();
     fetchSavedGames();
 });

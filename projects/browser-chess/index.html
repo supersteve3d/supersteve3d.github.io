@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Steve's Vibe Chess v4.3</title>
+    <title>Steve's Vibe Chess v5.0</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,7 +47,7 @@
                 <span class="logo-icon">👑</span>
                 <div class="title-stack">
                     <h1>Steve's <span>Vibe Chess</span></h1>
-                    <span class="version-badge" id="version-badge">v4.3</span>
+                    <span class="version-badge" id="version-badge">v5.0</span>
                 </div>
             </div>
             <div class="header-actions">
@@ -77,6 +77,7 @@
                         <select id="game-mode" class="select-control">
                             <option value="ai">Vs. Computer (AI)</option>
                             <option value="local">Vs. Local Player</option>
+                            <option value="online">Online Mum vs David</option>
                         </select>
                     </div>
 
@@ -87,6 +88,20 @@
                             <option value="medium" selected>Medium (Challenger)</option>
                             <option value="hard">Hard (Master)</option>
                         </select>
+                    </div>
+
+                    <div class="online-room-panel hidden" id="online-room-panel">
+                        <div class="online-room-header">
+                            <span>Live Room</span>
+                            <strong id="live-room-code-display">Not connected</strong>
+                        </div>
+                        <div class="online-room-actions">
+                            <button id="btn-create-room" class="btn btn-primary" type="button">Create Room</button>
+                            <input id="room-code-input" class="text-control" type="text" inputmode="latin" maxlength="6" placeholder="Code">
+                            <button id="btn-join-room" class="btn btn-secondary" type="button">Join</button>
+                        </div>
+                        <button id="btn-leave-room" class="btn btn-secondary hidden" type="button">Leave Room</button>
+                        <div class="online-room-status" id="online-room-status">Select Mum or David, then create or join a room.</div>
                     </div>
                 </div>
 
@@ -274,6 +289,13 @@
                 </button>
             </div>
             <div class="changelog-list">
+                <article class="changelog-item">
+                    <span class="changelog-version">v5.0</span>
+                    <div>
+                        <h3>Online rooms</h3>
+                        <p>Added phone-to-phone Mum vs David games with shared room codes, live board syncing, and saved head-to-head results.</p>
+                    </div>
+                </article>
                 <article class="changelog-item">
                     <span class="changelog-version">v4.3</span>
                     <div>
