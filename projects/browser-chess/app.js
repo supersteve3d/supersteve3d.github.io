@@ -356,8 +356,17 @@ function renderScoreboard() {
     rankedPlayers.forEach((player, index) => {
         const row = scoreboard.querySelector(`[data-player="${player}"]`);
         row.classList.remove('rank-gold', 'rank-silver', 'rank-bronze');
-        row.classList.add(rankClasses[index]);
-        row.querySelector('.score-medal').textContent = String(index + 1);
+        const tiedPlayersAtScore = rankedPlayers.filter(candidate =>
+            totals[candidate].wins === totals[player].wins &&
+            totals[candidate].played === totals[player].played
+        );
+        const tiedGroupStart = rankedPlayers.findIndex(candidate =>
+            totals[candidate].wins === totals[player].wins &&
+            totals[candidate].played === totals[player].played
+        );
+        const medalIndex = Math.min(tiedGroupStart + tiedPlayersAtScore.length - 1, rankClasses.length - 1);
+        row.classList.add(rankClasses[medalIndex]);
+        row.querySelector('.score-medal').textContent = String(medalIndex + 1);
         row.querySelector('[data-score="wins"]').textContent = totals[player].wins;
         row.querySelector('[data-score="played"]').textContent = totals[player].played;
         scoreboard.appendChild(row);
@@ -939,8 +948,8 @@ function updateCapturedPieces() {
     for (const type in standardPieces) {
         const count = standardPieces[type] - activePieces.b[type];
         whiteCapturedValue += count * pieceValues[type];
-        for (let i = 0; i < count; i++) {
-            whiteCaptures.appendChild(createCapturedPieceIcon('b', type));
+        if (count > 0) {
+            whiteCaptures.appendChild(createCapturedPieceIcon('b', type, count));
         }
     }
 
@@ -948,8 +957,8 @@ function updateCapturedPieces() {
     for (const type in standardPieces) {
         const count = standardPieces[type] - activePieces.w[type];
         blackCapturedValue += count * pieceValues[type];
-        for (let i = 0; i < count; i++) {
-            blackCaptures.appendChild(createCapturedPieceIcon('w', type));
+        if (count > 0) {
+            blackCaptures.appendChild(createCapturedPieceIcon('w', type, count));
         }
     }
 
@@ -963,12 +972,23 @@ function updateCapturedPieces() {
     }
 }
 
-function createCapturedPieceIcon(color, type) {
+function createCapturedPieceIcon(color, type, count) {
+    const wrapper = document.createElement('span');
+    wrapper.className = `captured-piece captured-piece-${color === 'b' ? 'black' : 'white'}`;
+
     const img = document.createElement('img');
-    img.className = `captured-piece ${color === 'b' ? 'captured-piece-black' : 'captured-piece-white'}`;
     img.src = `https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/${color}${type.toUpperCase()}.svg`;
     img.alt = `${color === 'w' ? 'White' : 'Black'} ${type}`;
-    return img;
+    wrapper.appendChild(img);
+
+    if (count > 1) {
+        const countBadge = document.createElement('span');
+        countBadge.className = 'captured-piece-count';
+        countBadge.textContent = `x${count}`;
+        wrapper.appendChild(countBadge);
+    }
+
+    return wrapper;
 }
 
 // Overlay Card showing results
