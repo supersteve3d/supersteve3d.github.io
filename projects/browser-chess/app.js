@@ -12,7 +12,7 @@ const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const SUPABASE_LIVE_TABLE = 'browser_chess_live_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
 const HEAD_TO_HEAD_PLAYERS = ['Mum', 'David'];
-const APP_VERSION = '5.2';
+const APP_VERSION = '5.3';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
@@ -27,6 +27,8 @@ let selectedSquare = null;
 let validMoves = [];
 let gameMode = 'ai'; // 'ai' or 'local'
 let aiDifficulty = 'medium'; // 'easy', 'medium', 'hard'
+let pieceTheme = 'vibe'; // 'classic' or 'vibe'
+let funEffectsEnabled = true;
 let currentPlayer = 'Anonymous';
 let soundEnabled = true;
 let isAiThinking = false;
@@ -151,6 +153,10 @@ function playSound(type) {
             break;
 
         case 'capture':
+            if (funEffectsEnabled) {
+                playFunCaptureSound(now);
+                break;
+            }
             // Synthesize a mechanical click/snap
             const oscCap = audioCtx.createOscillator();
             const gainCap = audioCtx.createGain();
@@ -217,6 +223,28 @@ function playSound(type) {
     }
 }
 
+function playFunCaptureSound(now) {
+    const burst = [
+        { freq: 180, type: 'sawtooth', gain: 0.08, delay: 0, duration: 0.12 },
+        { freq: 420, type: 'square', gain: 0.055, delay: 0.04, duration: 0.18 },
+        { freq: 720, type: 'triangle', gain: 0.04, delay: 0.1, duration: 0.2 }
+    ];
+
+    burst.forEach(({ freq, type, gain, delay, duration }) => {
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now + delay);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.65, now + delay + duration);
+        gainNode.gain.setValueAtTime(gain, now + delay);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, now + delay + duration);
+        osc.start(now + delay);
+        osc.stop(now + delay + duration);
+    });
+}
+
 function getSupabaseHeaders(extraHeaders = {}) {
     return {
         apikey: SUPABASE_KEY,
@@ -256,6 +284,25 @@ function generateRoomCode() {
 
 function getOpponentName(player) {
     return player === 'Mum' ? 'David' : 'Mum';
+}
+
+function getPieceGlyph(type) {
+    return {
+        k: 'K',
+        q: 'Q',
+        r: 'R',
+        b: 'B',
+        n: 'N',
+        p: 'P'
+    }[type] || '?';
+}
+
+function getPieceMarkup(color, type) {
+    const alt = `${color === 'w' ? 'White' : 'Black'} ${type}`;
+    if (pieceTheme === 'classic') {
+        return `<img src="https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/${color}${type.toUpperCase()}.svg" alt="${alt}" />`;
+    }
+    return `<span class="custom-piece custom-piece-${color}" aria-label="${alt}">${getPieceGlyph(type)}</span>`;
 }
 
 function getPlayerNameForColor(color) {
@@ -1030,13 +1077,11 @@ function renderBoard() {
             const piece = currentBoard[r][c];
             if (piece) {
                 const pieceDiv = document.createElement('div');
-                pieceDiv.className = `piece ${piece.color === 'w' ? 'white' : 'black'}`;
+                pieceDiv.className = `piece piece-theme-${pieceTheme} ${piece.color === 'w' ? 'white' : 'black'}`;
                 pieceDiv.draggable = !reviewMode && !isAiThinking && canControlPiece(piece);
 
                 // Standard Staunton representation from Lichess theme
-                pieceDiv.innerHTML = `
-                    <img src="https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/${piece.color}${piece.type.toUpperCase()}.svg" alt="${piece.color === 'w' ? 'White' : 'Black'} ${piece.type}" />
-                `;
+                pieceDiv.innerHTML = getPieceMarkup(piece.color, piece.type);
 
                 // Drag Events
                 pieceDiv.addEventListener('dragstart', (e) => {
@@ -1215,13 +1260,44 @@ function openPromotionDialog(color) {
     const promoTypes = ['q', 'r', 'b', 'n'];
     promoTypes.forEach(type => {
         const el = document.getElementById(`promo-${type}`);
-        el.innerHTML = `<img src="https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/${color}${type.toUpperCase()}.svg" style="width: 32px; height: 32px; object-fit: contain;" alt="${type}" />`;
+        el.innerHTML = getPieceMarkup(color, type);
     });
 }
 
 function closePromotionDialog() {
     document.getElementById('promotion-overlay').classList.add('hidden');
     pendingPromotion = null;
+}
+
+function triggerCaptureCelebration(squareName, move) {
+    if (!funEffectsEnabled) return;
+
+    const square = document.querySelector(`.square[data-square="${squareName}"]`);
+    const boardWrapper = document.querySelector('.board-wrapper');
+    if (!square || !boardWrapper) return;
+
+    const squareRect = square.getBoundingClientRect();
+    const wrapperRect = boardWrapper.getBoundingClientRect();
+    const burst = document.createElement('div');
+    burst.className = 'capture-celebration';
+    burst.style.left = `${squareRect.left - wrapperRect.left + squareRect.width / 2}px`;
+    burst.style.top = `${squareRect.top - wrapperRect.top + squareRect.height / 2}px`;
+
+    const captions = move.promotion ? ['POWER!', 'QUEEN!'] : ['POW!', 'ZAP!', 'BOOM!'];
+    const caption = captions[Math.floor(Math.random() * captions.length)];
+    burst.innerHTML = `
+        <span class="capture-word">${caption}</span>
+        <span class="capture-ring"></span>
+        <span class="capture-pop pop-1"></span>
+        <span class="capture-pop pop-2"></span>
+        <span class="capture-pop pop-3"></span>
+        <span class="capture-pop pop-4"></span>
+        <span class="capture-pop pop-5"></span>
+        <span class="capture-pop pop-6"></span>
+    `;
+
+    boardWrapper.appendChild(burst);
+    window.setTimeout(() => burst.remove(), 900);
 }
 
 // Add event listeners for promotion buttons
@@ -1253,14 +1329,18 @@ function executeMove(from, to, promotion = null) {
     if (move === null) return; // Invalid move safeguard
 
     // Play sounds
+    const capturedPiece = isCapture || move.flags.includes('e');
     if (game.in_checkmate() || game.in_draw()) {
         playSound('game-over');
     } else if (game.in_check()) {
         playSound('check');
-    } else if (isCapture || move.flags.includes('e')) { // Standard capture or en passant
+    } else if (capturedPiece) { // Standard capture or en passant
         playSound('capture');
     } else {
         playSound('move');
+    }
+    if (capturedPiece) {
+        triggerCaptureCelebration(to, move);
     }
 
     // Set last move variables for highlights
@@ -1510,11 +1590,7 @@ function updateCapturedPieces() {
 function createCapturedPieceIcon(color, type, count) {
     const wrapper = document.createElement('span');
     wrapper.className = `captured-piece captured-piece-${color === 'b' ? 'black' : 'white'}`;
-
-    const img = document.createElement('img');
-    img.src = `https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/${color}${type.toUpperCase()}.svg`;
-    img.alt = `${color === 'w' ? 'White' : 'Black'} ${type}`;
-    wrapper.appendChild(img);
+    wrapper.innerHTML = getPieceMarkup(color, type);
 
     if (count > 1) {
         const countBadge = document.createElement('span');
@@ -1799,6 +1875,16 @@ document.getElementById('ai-difficulty').addEventListener('change', (e) => {
         document.getElementById('black-player-name').textContent = `Computer (AI - ${aiDifficulty.charAt(0).toUpperCase() + aiDifficulty.slice(1)})`;
     }
     restartGame();
+});
+
+document.getElementById('piece-theme').addEventListener('change', (e) => {
+    pieceTheme = e.target.value;
+    renderBoard();
+    updateCapturedPieces();
+});
+
+document.getElementById('fun-effects').addEventListener('change', (e) => {
+    funEffectsEnabled = e.target.value === 'on';
 });
 
 // Sound Toggle

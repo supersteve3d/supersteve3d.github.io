@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Steve's Vibe Chess v5.2</title>
+    <title>Steve's Vibe Chess v5.3</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,7 +47,7 @@
                 <span class="logo-icon">👑</span>
                 <div class="title-stack">
                     <h1>Steve's <span>Vibe Chess</span></h1>
-                    <span class="version-badge" id="version-badge">v5.2</span>
+                    <span class="version-badge" id="version-badge">v5.3</span>
                 </div>
             </div>
             <div class="header-actions">
@@ -121,6 +121,22 @@
                             <option value="easy">Easy (Novice)</option>
                             <option value="medium" selected>Medium (Challenger)</option>
                             <option value="hard">Hard (Master)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="piece-theme">Chess Set</label>
+                        <select id="piece-theme" class="select-control">
+                            <option value="classic">Classic</option>
+                            <option value="vibe" selected>Vibe Kids</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fun-effects">Capture Effects</label>
+                        <select id="fun-effects" class="select-control">
+                            <option value="on" selected>Fun</option>
+                            <option value="off">Quiet</option>
                         </select>
                     </div>
 
@@ -307,6 +323,13 @@
                 </button>
             </div>
             <div class="changelog-list">
+                <article class="changelog-item">
+                    <span class="changelog-version">v5.3</span>
+                    <div>
+                        <h3>Fun capture mode</h3>
+                        <p>Added a colorful custom chess set and playful capture animations with bigger sound effects.</p>
+                    </div>
+                </article>
                 <article class="changelog-item">
                     <span class="changelog-version">v5.2</span>
                     <div>
