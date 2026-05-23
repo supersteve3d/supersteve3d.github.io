@@ -352,19 +352,29 @@ function renderScoreboard() {
         return PLAYER_NAMES.indexOf(a) - PLAYER_NAMES.indexOf(b);
     });
     const rankClasses = ['rank-gold', 'rank-silver', 'rank-bronze'];
+    const uniqueScores = [...new Set(rankedPlayers.map(player => `${totals[player].wins}:${totals[player].played}`))];
+    const medalByPlayer = {};
+
+    if (uniqueScores.length === 1) {
+        rankedPlayers.forEach(player => {
+            medalByPlayer[player] = 2;
+        });
+    } else if (uniqueScores.length === 2) {
+        const topScore = uniqueScores[0];
+        const topGroup = rankedPlayers.filter(player => `${totals[player].wins}:${totals[player].played}` === topScore);
+        rankedPlayers.forEach(player => {
+            medalByPlayer[player] = topGroup.length > 1 || topGroup.includes(player) ? 1 : 2;
+        });
+    } else {
+        rankedPlayers.forEach((player, index) => {
+            medalByPlayer[player] = index;
+        });
+    }
 
     rankedPlayers.forEach((player, index) => {
         const row = scoreboard.querySelector(`[data-player="${player}"]`);
         row.classList.remove('rank-gold', 'rank-silver', 'rank-bronze');
-        const tiedPlayersAtScore = rankedPlayers.filter(candidate =>
-            totals[candidate].wins === totals[player].wins &&
-            totals[candidate].played === totals[player].played
-        );
-        const tiedGroupStart = rankedPlayers.findIndex(candidate =>
-            totals[candidate].wins === totals[player].wins &&
-            totals[candidate].played === totals[player].played
-        );
-        const medalIndex = Math.min(tiedGroupStart + tiedPlayersAtScore.length - 1, rankClasses.length - 1);
+        const medalIndex = medalByPlayer[player];
         row.classList.add(rankClasses[medalIndex]);
         row.querySelector('.score-medal').textContent = String(medalIndex + 1);
         row.querySelector('[data-score="wins"]').textContent = totals[player].wins;
