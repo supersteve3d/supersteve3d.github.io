@@ -332,6 +332,7 @@ function updateSelectedPlayer(player) {
 }
 
 function renderScoreboard() {
+    const scoreboard = document.getElementById('scoreboard');
     const totals = PLAYER_NAMES.reduce((acc, player) => {
         acc[player] = { played: 0, wins: 0 };
         return acc;
@@ -345,15 +346,21 @@ function renderScoreboard() {
         }
     });
 
-    const ids = {
-        Mum: ['score-mum-wins', 'score-mum-played'],
-        David: ['score-david-wins', 'score-david-played'],
-        Anonymous: ['score-anonymous-wins', 'score-anonymous-played']
-    };
+    const rankedPlayers = [...PLAYER_NAMES].sort((a, b) => {
+        if (totals[b].wins !== totals[a].wins) return totals[b].wins - totals[a].wins;
+        if (totals[b].played !== totals[a].played) return totals[b].played - totals[a].played;
+        return PLAYER_NAMES.indexOf(a) - PLAYER_NAMES.indexOf(b);
+    });
+    const rankClasses = ['rank-gold', 'rank-silver', 'rank-bronze'];
 
-    PLAYER_NAMES.forEach(player => {
-        document.getElementById(ids[player][0]).textContent = totals[player].wins;
-        document.getElementById(ids[player][1]).textContent = totals[player].played;
+    rankedPlayers.forEach((player, index) => {
+        const row = scoreboard.querySelector(`[data-player="${player}"]`);
+        row.classList.remove('rank-gold', 'rank-silver', 'rank-bronze');
+        row.classList.add(rankClasses[index]);
+        row.querySelector('.score-medal').textContent = String(index + 1);
+        row.querySelector('[data-score="wins"]').textContent = totals[player].wins;
+        row.querySelector('[data-score="played"]').textContent = totals[player].played;
+        scoreboard.appendChild(row);
     });
 }
 
@@ -835,6 +842,7 @@ function updateMoveHistory() {
     historyBody.innerHTML = '';
 
     const history = game.history({ verbose: true });
+    const reviewMode = isReviewing();
 
     for (let i = 0; i < history.length; i += 2) {
         const moveNumber = Math.floor(i / 2) + 1;
@@ -857,7 +865,7 @@ function updateMoveHistory() {
             tdWhite.dataset.ply = String(i + 1);
             tdWhite.title = 'Jump to this position';
             tdWhite.addEventListener('click', () => enterReviewAtPly(i + 1));
-            if (getReviewPly() === i + 1) {
+            if (reviewMode && getReviewPly() === i + 1) {
                 tdWhite.classList.add('active');
             }
         }
@@ -871,7 +879,7 @@ function updateMoveHistory() {
             tdBlack.dataset.ply = String(i + 2);
             tdBlack.title = 'Jump to this position';
             tdBlack.addEventListener('click', () => enterReviewAtPly(i + 2));
-            if (getReviewPly() === i + 2) {
+            if (reviewMode && getReviewPly() === i + 2) {
                 tdBlack.classList.add('active');
             }
         }
@@ -883,7 +891,7 @@ function updateMoveHistory() {
     // Auto-scroll the log container to bottom
     const scrollContainer = document.querySelector('.move-history-scroll');
     const activeMove = historyBody.querySelector('.move-history-move.active');
-    if (activeMove) {
+    if (reviewMode && activeMove) {
         activeMove.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     } else {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;

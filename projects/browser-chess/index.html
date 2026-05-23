@@ -84,28 +84,6 @@
                     </div>
                 </div>
 
-                <div class="panel-section stats-section">
-                    <h2>Scoreboard</h2>
-                    <div class="scoreboard" id="scoreboard">
-                        <div class="score-row" data-player="Mum">
-                            <span class="score-player">Mum</span>
-                            <span><strong id="score-mum-wins">0</strong> wins</span>
-                            <span><strong id="score-mum-played">0</strong> played</span>
-                        </div>
-                        <div class="score-row" data-player="David">
-                            <span class="score-player">David</span>
-                            <span><strong id="score-david-wins">0</strong> wins</span>
-                            <span><strong id="score-david-played">0</strong> played</span>
-                        </div>
-                        <div class="score-row" data-player="Anonymous">
-                            <span class="score-player">Anonymous</span>
-                            <span><strong id="score-anonymous-wins">0</strong> wins</span>
-                            <span><strong id="score-anonymous-played">0</strong> played</span>
-                        </div>
-                    </div>
-                    <div class="save-status" id="save-status">Saved games sync when Supabase is ready.</div>
-                </div>
-
                 <div class="panel-section">
                     <h2>Controls</h2>
                     <div class="controls-grid">
@@ -131,6 +109,73 @@
                             <span id="btn-export-text">Export to Lichess (PGN)</span>
                         </button>
                     </div>
+                </div>
+            </section>
+
+            <!-- Center Side / Chess Board Area -->
+            <section class="board-area">
+                <!-- Player Black Info Card -->
+                <div class="player-card" id="player-black-card">
+                    <div class="player-avatar black-avatar">🤖</div>
+                    <div class="player-details">
+                        <span class="player-name" id="black-player-name">Computer (AI)</span>
+                        <span class="player-status" id="black-player-status">Waiting</span>
+                    </div>
+                    <div class="thinking-spinner hidden" id="black-thinking-spinner"></div>
+                </div>
+
+                <!-- Board Container -->
+                <div class="board-wrapper">
+                    <div id="chess-board" class="chess-board"></div>
+
+                    <!-- Overlay Banner for Game End States -->
+                    <div id="game-over-overlay" class="overlay hidden">
+                        <div class="overlay-card">
+                            <div class="overlay-icon">🏆</div>
+                            <h2 id="overlay-title">Checkmate!</h2>
+                            <p id="overlay-description">White wins the match.</p>
+                            <div class="overlay-actions">
+                                <button id="btn-overlay-review" class="btn btn-secondary">Review Game</button>
+                                <button id="btn-overlay-restart" class="btn btn-primary">Play Again</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Player White Info Card -->
+                <div class="player-card active" id="player-white-card">
+                    <div class="player-avatar white-avatar">👤</div>
+                    <div class="player-details">
+                        <span class="player-name" id="white-player-name">Player 1 (White)</span>
+                        <span class="player-status" id="white-player-status">Your Turn</span>
+                    </div>
+                </div>
+            </section>
+
+            <aside class="panel records-panel">
+                <div class="panel-section stats-section">
+                    <h2>Scoreboard</h2>
+                    <div class="scoreboard" id="scoreboard">
+                        <div class="score-row" data-player="Mum">
+                            <span class="score-medal" aria-hidden="true">1</span>
+                            <span class="score-player">Mum</span>
+                            <span><strong id="score-mum-wins" data-score="wins">0</strong> wins</span>
+                            <span><strong id="score-mum-played" data-score="played">0</strong> played</span>
+                        </div>
+                        <div class="score-row" data-player="David">
+                            <span class="score-medal" aria-hidden="true">2</span>
+                            <span class="score-player">David</span>
+                            <span><strong id="score-david-wins" data-score="wins">0</strong> wins</span>
+                            <span><strong id="score-david-played" data-score="played">0</strong> played</span>
+                        </div>
+                        <div class="score-row" data-player="Anonymous">
+                            <span class="score-medal" aria-hidden="true">3</span>
+                            <span class="score-player">Anonymous</span>
+                            <span><strong id="score-anonymous-wins" data-score="wins">0</strong> wins</span>
+                            <span><strong id="score-anonymous-played" data-score="played">0</strong> played</span>
+                        </div>
+                    </div>
+                    <div class="save-status" id="save-status">Saved games sync when Supabase is ready.</div>
                 </div>
 
                 <div class="panel-section saved-games-section">
@@ -187,47 +232,7 @@
                         </div>
                     </div>
                 </div>
-            </section>
-
-            <!-- Center Side / Chess Board Area -->
-            <section class="board-area">
-                <!-- Player Black Info Card -->
-                <div class="player-card" id="player-black-card">
-                    <div class="player-avatar black-avatar">🤖</div>
-                    <div class="player-details">
-                        <span class="player-name" id="black-player-name">Computer (AI)</span>
-                        <span class="player-status" id="black-player-status">Waiting</span>
-                    </div>
-                    <div class="thinking-spinner hidden" id="black-thinking-spinner"></div>
-                </div>
-
-                <!-- Board Container -->
-                <div class="board-wrapper">
-                    <div id="chess-board" class="chess-board"></div>
-
-                    <!-- Overlay Banner for Game End States -->
-                    <div id="game-over-overlay" class="overlay hidden">
-                        <div class="overlay-card">
-                            <div class="overlay-icon">🏆</div>
-                            <h2 id="overlay-title">Checkmate!</h2>
-                            <p id="overlay-description">White wins the match.</p>
-                            <div class="overlay-actions">
-                                <button id="btn-overlay-review" class="btn btn-secondary">Review Game</button>
-                                <button id="btn-overlay-restart" class="btn btn-primary">Play Again</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Player White Info Card -->
-                <div class="player-card active" id="player-white-card">
-                    <div class="player-avatar white-avatar">👤</div>
-                    <div class="player-details">
-                        <span class="player-name" id="white-player-name">Player 1 (White)</span>
-                        <span class="player-status" id="white-player-status">Your Turn</span>
-                    </div>
-                </div>
-            </section>
+            </aside>
         </main>
     </div>
 
