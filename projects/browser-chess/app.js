@@ -363,7 +363,11 @@ function renderScoreboard() {
         const topScore = uniqueScores[0];
         const topGroup = rankedPlayers.filter(player => `${totals[player].wins}:${totals[player].played}` === topScore);
         rankedPlayers.forEach(player => {
-            medalByPlayer[player] = topGroup.length > 1 || topGroup.includes(player) ? 1 : 2;
+            if (topGroup.length > 1) {
+                medalByPlayer[player] = topGroup.includes(player) ? 1 : 2;
+            } else {
+                medalByPlayer[player] = topGroup.includes(player) ? 0 : 1;
+            }
         });
     } else {
         rankedPlayers.forEach((player, index) => {
