@@ -196,6 +196,7 @@ function playSound(type) {
 // Generate the Chess Board dynamically in HTML DOM
 function renderBoard() {
     const boardElement = document.getElementById('chess-board');
+    boardElement.onclick = handleBoardClick;
     boardElement.innerHTML = '';
 
     // Toggle flipped CSS class
@@ -305,23 +306,6 @@ function renderBoard() {
                     }, 100);
                 });
 
-                // Tap (Click) select events
-                pieceDiv.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    initAudio();
-                    if (isAiThinking) return;
-                    if (gameMode === 'ai' && piece.color === 'b') return;
-
-                    if (selectedSquare === squareName) {
-                        selectedSquare = null;
-                        validMoves = [];
-                    } else {
-                        selectedSquare = squareName;
-                        validMoves = game.moves({ square: squareName, verbose: true });
-                    }
-                    renderBoard();
-                });
-
                 squareDiv.appendChild(pieceDiv);
             }
 
@@ -345,12 +329,6 @@ function renderBoard() {
                     handleMoveIntent(fromSquare, squareName);
                 });
 
-                squareDiv.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (selectedSquare) {
-                        handleMoveIntent(selectedSquare, squareName);
-                    }
-                });
             } else {
                 // If not a valid move, still support dragover to block it
                 squareDiv.addEventListener('dragover', (e) => e.preventDefault());
@@ -359,6 +337,42 @@ function renderBoard() {
             boardElement.appendChild(squareDiv);
         }
     }
+}
+
+function handleBoardClick(e) {
+    const squareElement = e.target.closest('.square');
+    if (!squareElement || !e.currentTarget.contains(squareElement)) return;
+
+    e.stopPropagation();
+    initAudio();
+    if (isAiThinking) return;
+
+    const squareName = squareElement.dataset.square;
+    const piece = game.get(squareName);
+    const selectedMove = selectedSquare ? validMoves.find(m => m.to === squareName) : null;
+
+    if (selectedSquare && selectedMove) {
+        handleMoveIntent(selectedSquare, squareName);
+        return;
+    }
+
+    if (!piece) {
+        selectedSquare = null;
+        validMoves = [];
+        renderBoard();
+        return;
+    }
+
+    if (gameMode === 'ai' && piece.color === 'b') return;
+
+    if (selectedSquare === squareName) {
+        selectedSquare = null;
+        validMoves = [];
+    } else {
+        selectedSquare = squareName;
+        validMoves = game.moves({ square: squareName, verbose: true });
+    }
+    renderBoard();
 }
 
 // Check if a move requires pawn promotion
