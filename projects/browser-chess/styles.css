@@ -443,6 +443,23 @@ h1, h2, h3, .logo-area {
     background: rgba(255, 255, 255, 0.03);
 }
 
+.move-history-move {
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.move-history-move:hover {
+    background: rgba(99, 102, 241, 0.16) !important;
+    color: #c7d2fe;
+}
+
+.move-history-move.active {
+    background: rgba(16, 185, 129, 0.16);
+    color: #bbf7d0;
+    box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.28);
+}
+
 .move-history-table tr:last-child td {
     border-bottom: none;
 }

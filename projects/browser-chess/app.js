@@ -17,6 +17,7 @@ let isAiThinking = false;
 let pendingPromotion = null; // Stores { from, to } during promotion selection
 let audioCtx = null;
 let lastMove = null; // Stores { from, to } for highlight
+let reviewPly = null; // null means live position; otherwise number of half-moves shown
 
 // Piece-Square Tables (PST) for AI positional evaluation
 // Values represent hundredths of a pawn (centipawns)
@@ -198,6 +199,9 @@ function renderBoard() {
     const boardElement = document.getElementById('chess-board');
     boardElement.onclick = handleBoardClick;
     boardElement.innerHTML = '';
+    const displayGame = getDisplayGame();
+    const reviewMode = isReviewing();
+    const displayLastMove = getDisplayLastMove();
 
     // Toggle flipped CSS class
     if (boardFlipped) {
@@ -209,9 +213,9 @@ function renderBoard() {
     const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
     const ranks = [8, 7, 6, 5, 4, 3, 2, 1];
 
-    const currentBoard = game.board();
-    const inCheck = game.in_check();
-    const activeColor = game.turn();
+    const currentBoard = displayGame.board();
+    const inCheck = displayGame.in_check();
+    const activeColor = displayGame.turn();
 
     // Find the King square of active color if they are in check
     let checkSquare = null;
@@ -239,12 +243,12 @@ function renderBoard() {
             squareDiv.dataset.square = squareName;
 
             // Add highlighting if it's part of the last move
-            if (lastMove && (lastMove.from === squareName || lastMove.to === squareName)) {
-                squareDiv.classList.add(lastMove.from === squareName ? 'highlight-from' : 'highlight-to');
+            if (displayLastMove && (displayLastMove.from === squareName || displayLastMove.to === squareName)) {
+                squareDiv.classList.add(displayLastMove.from === squareName ? 'highlight-from' : 'highlight-to');
             }
 
             // Highlight if selected
-            if (selectedSquare === squareName) {
+            if (!reviewMode && selectedSquare === squareName) {
                 squareDiv.classList.add('selected');
             }
 
@@ -276,7 +280,7 @@ function renderBoard() {
             if (piece) {
                 const pieceDiv = document.createElement('div');
                 pieceDiv.className = `piece ${piece.color === 'w' ? 'white' : 'black'}`;
-                pieceDiv.draggable = !isAiThinking && (gameMode === 'local' || piece.color === 'w');
+                pieceDiv.draggable = !reviewMode && !isAiThinking && (gameMode === 'local' || piece.color === 'w');
 
                 // Standard Staunton representation from Lichess theme
                 pieceDiv.innerHTML = `
@@ -286,7 +290,10 @@ function renderBoard() {
                 // Drag Events
                 pieceDiv.addEventListener('dragstart', (e) => {
                     initAudio(); // Warm up context on drag
-                    if (isAiThinking) return;
+                    if (reviewMode || isAiThinking) {
+                        e.preventDefault();
+                        return;
+                    }
                     if (gameMode === 'ai' && piece.color === 'b') {
                         e.preventDefault();
                         return;
@@ -310,7 +317,7 @@ function renderBoard() {
             }
 
             // Render valid move markers if selected
-            const validMove = validMoves.find(m => m.to === squareName);
+            const validMove = reviewMode ? null : validMoves.find(m => m.to === squareName);
             if (validMove) {
                 if (piece) {
                     squareDiv.classList.add('capture-target');
@@ -339,13 +346,65 @@ function renderBoard() {
     }
 }
 
+function getLivePlyCount() {
+    return game.history().length;
+}
+
+function isReviewing() {
+    return reviewPly !== null && reviewPly < getLivePlyCount();
+}
+
+function getReviewPly() {
+    return reviewPly === null ? getLivePlyCount() : reviewPly;
+}
+
+function getDisplayGame() {
+    if (!isReviewing()) return game;
+
+    const displayGame = new Chess();
+    const history = game.history({ verbose: true });
+    for (let i = 0; i < reviewPly; i++) {
+        const move = history[i];
+        const replayMove = { from: move.from, to: move.to };
+        if (move.promotion) replayMove.promotion = move.promotion;
+        displayGame.move(replayMove);
+    }
+    return displayGame;
+}
+
+function getDisplayLastMove() {
+    if (!isReviewing()) return lastMove;
+    if (reviewPly === 0) return null;
+
+    const move = game.history({ verbose: true })[reviewPly - 1];
+    return move ? { from: move.from, to: move.to } : null;
+}
+
+function enterReviewAtPly(ply) {
+    const livePly = getLivePlyCount();
+    reviewPly = Math.max(0, Math.min(ply, livePly));
+    if (reviewPly === livePly) {
+        reviewPly = null;
+    }
+
+    selectedSquare = null;
+    validMoves = [];
+    updateUI();
+}
+
+function stepReview(delta) {
+    const livePly = getLivePlyCount();
+    if (livePly === 0) return;
+    enterReviewAtPly(getReviewPly() + delta);
+}
+
 function handleBoardClick(e) {
     const squareElement = e.target.closest('.square');
     if (!squareElement || !e.currentTarget.contains(squareElement)) return;
 
     e.stopPropagation();
     initAudio();
-    if (isAiThinking) return;
+    if (isReviewing() || isAiThinking) return;
 
     const squareName = squareElement.dataset.square;
     const piece = game.get(squareName);
@@ -418,6 +477,8 @@ document.querySelectorAll('.promo-btn').forEach(btn => {
 
 // Perform Move state changes
 function executeMove(from, to, promotion = null) {
+    if (isReviewing()) return;
+
     const isCapture = game.get(to) !== null;
 
     const move = game.move({
@@ -441,6 +502,7 @@ function executeMove(from, to, promotion = null) {
 
     // Set last move variables for highlights
     lastMove = { from, to };
+    reviewPly = null;
 
     // Clear selection
     selectedSquare = null;
@@ -468,6 +530,26 @@ function updateGameStatus() {
     const statusText = document.getElementById('game-status-text');
     const whiteCard = document.getElementById('player-white-card');
     const blackCard = document.getElementById('player-black-card');
+    const displayGame = getDisplayGame();
+
+    if (isReviewing()) {
+        const currentPly = getReviewPly();
+        const livePly = getLivePlyCount();
+        statusText.textContent = `Review ${currentPly}/${livePly}`;
+        statusText.classList.remove('check');
+
+        if (displayGame.turn() === 'w') {
+            whiteCard.classList.add('active');
+            blackCard.classList.remove('active');
+        } else {
+            blackCard.classList.add('active');
+            whiteCard.classList.remove('active');
+        }
+
+        document.getElementById('white-player-status').textContent = "Reviewing";
+        document.getElementById('black-player-status').textContent = "Reviewing";
+        return;
+    }
 
     if (game.in_checkmate()) {
         statusText.textContent = "CHECKMATE!";
@@ -531,11 +613,29 @@ function updateMoveHistory() {
         // White move cell
         const tdWhite = document.createElement('td');
         tdWhite.textContent = whiteMove ? whiteMove.san : '';
+        if (whiteMove) {
+            tdWhite.className = 'move-history-move';
+            tdWhite.dataset.ply = String(i + 1);
+            tdWhite.title = 'Jump to this position';
+            tdWhite.addEventListener('click', () => enterReviewAtPly(i + 1));
+            if (getReviewPly() === i + 1) {
+                tdWhite.classList.add('active');
+            }
+        }
         tr.appendChild(tdWhite);
 
         // Black move cell
         const tdBlack = document.createElement('td');
         tdBlack.textContent = blackMove ? blackMove.san : '';
+        if (blackMove) {
+            tdBlack.className = 'move-history-move';
+            tdBlack.dataset.ply = String(i + 2);
+            tdBlack.title = 'Jump to this position';
+            tdBlack.addEventListener('click', () => enterReviewAtPly(i + 2));
+            if (getReviewPly() === i + 2) {
+                tdBlack.classList.add('active');
+            }
+        }
         tr.appendChild(tdBlack);
 
         historyBody.appendChild(tr);
@@ -543,7 +643,12 @@ function updateMoveHistory() {
 
     // Auto-scroll the log container to bottom
     const scrollContainer = document.querySelector('.move-history-scroll');
-    scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    const activeMove = historyBody.querySelector('.move-history-move.active');
+    if (activeMove) {
+        activeMove.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    } else {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
 }
 
 // Compute captured pieces by counting pieces remaining vs standard set
@@ -571,8 +676,8 @@ function updateCapturedPieces() {
         b: { p: 0, n: 0, b: 0, r: 0, q: 0, k: 0 }
     };
 
-    // Tally board pieces
-    game.board().forEach(row => {
+    // Tally board pieces for the currently displayed position
+    getDisplayGame().board().forEach(row => {
         row.forEach(piece => {
             if (piece && piece.type !== 'k') {
                 activePieces[piece.color][piece.type]++;
@@ -863,6 +968,7 @@ function restartGame() {
     selectedSquare = null;
     validMoves = [];
     lastMove = null;
+    reviewPly = null;
     closeGameOverOverlay();
     updateUI();
 }
@@ -873,6 +979,7 @@ document.getElementById('btn-overlay-restart').addEventListener('click', restart
 // Undo Move
 document.getElementById('btn-undo').addEventListener('click', () => {
     if (isAiThinking) return;
+    reviewPly = null;
 
     if (gameMode === 'ai') {
         // Undo twice (AI move + player move)
@@ -950,6 +1057,25 @@ document.getElementById('btn-export').addEventListener('click', () => {
         // Fallback: just open Lichess
         window.open('https://lichess.org/paste', '_blank');
     });
+});
+
+document.addEventListener('keydown', (e) => {
+    const target = e.target;
+    const isTypingTarget = target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'SELECT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+    );
+    if (isTypingTarget || pendingPromotion) return;
+
+    if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        stepReview(-1);
+    } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        stepReview(1);
+    }
 });
 
 // Click outside board clears selection
