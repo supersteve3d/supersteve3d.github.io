@@ -10,7 +10,7 @@ const SUPABASE_URL = 'https://duvohiskcdlsvawyvhpq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_SnqVU4BFVL237B2ZOJeRVg_0KyPpr_o';
 const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
-const APP_VERSION = '4.2';
+const APP_VERSION = '4.3';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
@@ -515,6 +515,14 @@ function openChangelog() {
 
 function closeChangelog() {
     document.getElementById('changelog-overlay').classList.add('hidden');
+}
+
+function openScoringGuide() {
+    document.getElementById('scoring-overlay').classList.remove('hidden');
+}
+
+function closeScoringGuide() {
+    document.getElementById('scoring-overlay').classList.add('hidden');
 }
 
 // Generate the Chess Board dynamically in HTML DOM
@@ -1281,6 +1289,13 @@ document.getElementById('changelog-overlay').addEventListener('click', (e) => {
         closeChangelog();
     }
 });
+document.getElementById('btn-scoring').addEventListener('click', openScoringGuide);
+document.getElementById('btn-scoring-close').addEventListener('click', closeScoringGuide);
+document.getElementById('scoring-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'scoring-overlay') {
+        closeScoringGuide();
+    }
+});
 
 // Toggle Opponent (AI vs Local)
 document.getElementById('game-mode').addEventListener('change', (e) => {
@@ -1448,6 +1463,7 @@ document.addEventListener('keydown', (e) => {
         stepReview(1);
     } else if (e.key === 'Escape') {
         closeChangelog();
+        closeScoringGuide();
     }
 });
 

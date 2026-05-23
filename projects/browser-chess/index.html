@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Steve's Vibe Chess v4.2</title>
+    <title>Steve's Vibe Chess v4.3</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,7 +47,7 @@
                 <span class="logo-icon">👑</span>
                 <div class="title-stack">
                     <h1>Steve's <span>Vibe Chess</span></h1>
-                    <span class="version-badge" id="version-badge">v4.2</span>
+                    <span class="version-badge" id="version-badge">v4.3</span>
                 </div>
             </div>
             <div class="header-actions">
@@ -160,7 +160,10 @@
 
             <aside class="panel records-panel">
                 <div class="panel-section stats-section">
-                    <h2>Scoreboard</h2>
+                    <div class="section-title-row">
+                        <h2>Scoreboard</h2>
+                        <button id="btn-scoring" class="header-link compact-link" type="button">Scoring</button>
+                    </div>
                     <div class="scoreboard" id="scoreboard">
                         <div class="score-row" data-player="Mum">
                             <span class="score-medal" aria-label="0 competition points">0</span>
@@ -272,6 +275,13 @@
             </div>
             <div class="changelog-list">
                 <article class="changelog-item">
+                    <span class="changelog-version">v4.3</span>
+                    <div>
+                        <h3>Scoring guide</h3>
+                        <p>Added a transparent scoring explainer beside the scoreboard.</p>
+                    </div>
+                </article>
+                <article class="changelog-item">
                     <span class="changelog-version">v4.2</span>
                     <div>
                         <h3>Competition points</h3>
@@ -313,6 +323,57 @@
                         <p>Initial browser chess game with AI difficulty, local play, move history, captured pieces, board flip, undo, sound, and PGN export.</p>
                     </div>
                 </article>
+            </div>
+        </div>
+    </div>
+
+    <div id="scoring-overlay" class="floating-modal hidden" role="dialog" aria-modal="true" aria-labelledby="scoring-title">
+        <div class="floating-card scoring-card">
+            <div class="floating-card-header">
+                <div>
+                    <h2 id="scoring-title">Scoring</h2>
+                    <p>Points are shown inside each medal and decide the scoreboard order.</p>
+                </div>
+                <button id="btn-scoring-close" class="icon-btn" type="button" aria-label="Close scoring guide">
+                    <svg viewBox="0 0 24 24"><path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.41L10.59 13.41 4.29 19.71 2.88 18.3 9.17 12 2.88 5.71 4.29 4.29l6.3 6.3 6.29-6.3 1.42 1.42z"/></svg>
+                </button>
+            </div>
+            <div class="scoring-guide">
+                <section>
+                    <h3>Base Points</h3>
+                    <div class="scoring-grid">
+                        <span>Easy win</span><strong>3</strong>
+                        <span>Medium win</span><strong>5</strong>
+                        <span>Hard win</span><strong>8</strong>
+                        <span>Local win</span><strong>5</strong>
+                    </div>
+                </section>
+                <section>
+                    <h3>Game Length</h3>
+                    <div class="scoring-grid">
+                        <span>Win in 25 moves or fewer</span><strong>+2</strong>
+                        <span>Win in 26-40 moves</span><strong>+1</strong>
+                        <span>Win in 41-69 moves</span><strong>+0</strong>
+                        <span>Win in 70 moves or more</span><strong>-1</strong>
+                    </div>
+                </section>
+                <section>
+                    <h3>Other Results</h3>
+                    <div class="scoring-grid">
+                        <span>Draw</span><strong>Half base, rounded down</strong>
+                        <span>Loss</span><strong>0</strong>
+                    </div>
+                </section>
+                <section>
+                    <h3>Ranking</h3>
+                    <div class="scoring-grid">
+                        <span>Main ranking</span><strong>Total points</strong>
+                        <span>Tiebreaker 1</span><strong>Wins</strong>
+                        <span>Tiebreaker 2</span><strong>Games played</strong>
+                        <span>Medal ties</span><strong>Conservative</strong>
+                    </div>
+                </section>
+                <p class="scoring-note">Example: beating Hard in 24 moves scores 10 points: 8 base points plus a 2 point quick-win bonus. Beating Easy in 72 moves scores 2 points: 3 base points minus 1 for a very long game. Conservative medals mean tied players share the lower medal unless someone is clearly ahead.</p>
             </div>
         </div>
     </div>
