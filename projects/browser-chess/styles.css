@@ -779,6 +779,13 @@ h1, h2, h3, .logo-area {
     margin-bottom: 24px;
 }
 
+.overlay-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
 /* Promotion Modal override */
 #promotion-overlay {
     position: fixed; /* Global viewport overlay for pawn promotion */

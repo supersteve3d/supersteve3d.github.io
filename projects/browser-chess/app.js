@@ -18,6 +18,7 @@ let pendingPromotion = null; // Stores { from, to } during promotion selection
 let audioCtx = null;
 let lastMove = null; // Stores { from, to } for highlight
 let reviewPly = null; // null means live position; otherwise number of half-moves shown
+let gameOverOverlayDismissed = false;
 
 // Piece-Square Tables (PST) for AI positional evaluation
 // Values represent hundredths of a pawn (centipawns)
@@ -726,6 +727,8 @@ function createCapturedPieceIcon(color, type) {
 
 // Overlay Card showing results
 function showGameOverOverlay(title, description) {
+    if (gameOverOverlayDismissed) return;
+
     const overlay = document.getElementById('game-over-overlay');
     document.getElementById('overlay-title').textContent = title;
     document.getElementById('overlay-description').textContent = description;
@@ -733,7 +736,16 @@ function showGameOverOverlay(title, description) {
 }
 
 function closeGameOverOverlay() {
+    gameOverOverlayDismissed = true;
     document.getElementById('game-over-overlay').classList.add('hidden');
+}
+
+function reviewFinishedGame() {
+    closeGameOverOverlay();
+    reviewPly = null;
+    selectedSquare = null;
+    validMoves = [];
+    updateUI();
 }
 
 // -------------------------------------------------------------
@@ -969,12 +981,14 @@ function restartGame() {
     validMoves = [];
     lastMove = null;
     reviewPly = null;
-    closeGameOverOverlay();
+    gameOverOverlayDismissed = false;
+    document.getElementById('game-over-overlay').classList.add('hidden');
     updateUI();
 }
 
 document.getElementById('btn-restart').addEventListener('click', restartGame);
 document.getElementById('btn-overlay-restart').addEventListener('click', restartGame);
+document.getElementById('btn-overlay-review').addEventListener('click', reviewFinishedGame);
 
 // Undo Move
 document.getElementById('btn-undo').addEventListener('click', () => {
