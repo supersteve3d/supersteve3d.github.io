@@ -45,9 +45,15 @@
         <header class="app-header">
             <div class="logo-area">
                 <span class="logo-icon">👑</span>
-                <h1>Steve's <span>Vibe Chess</span></h1>
+                <div class="title-stack">
+                    <h1>Steve's <span>Vibe Chess</span></h1>
+                    <span class="version-badge" id="version-badge">v4.1</span>
+                </div>
             </div>
-            <div class="status-indicator" id="game-status-text">White's Turn</div>
+            <div class="header-actions">
+                <button id="btn-changelog" class="header-link" type="button">Changelog</button>
+                <div class="status-indicator" id="game-status-text">White's Turn</div>
+            </div>
         </header>
 
         <!-- Main Layout -->
@@ -246,6 +252,57 @@
                 <button class="promo-btn" data-piece="r" title="Rook"><span class="promo-icon" id="promo-r">♜</span>Rook</button>
                 <button class="promo-btn" data-piece="b" title="Bishop"><span class="promo-icon" id="promo-b">♝</span>Bishop</button>
                 <button class="promo-btn" data-piece="n" title="Knight"><span class="promo-icon" id="promo-n">♞</span>Knight</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="changelog-overlay" class="floating-modal hidden" role="dialog" aria-modal="true" aria-labelledby="changelog-title">
+        <div class="floating-card changelog-card">
+            <div class="floating-card-header">
+                <div>
+                    <h2 id="changelog-title">Changelog</h2>
+                    <p>Major feature generations only.</p>
+                </div>
+                <button id="btn-changelog-close" class="icon-btn" type="button" aria-label="Close changelog">
+                    <svg viewBox="0 0 24 24"><path fill="currentColor" d="M18.3 5.71 16.89 4.3 12 9.17 7.11 4.3 5.7 5.71 10.59 10.6 5.7 15.49l1.41 1.41L12 12.01l4.89 4.89 1.41-1.41-4.89-4.89 4.89-4.89z"/></svg>
+                </button>
+            </div>
+            <div class="changelog-list">
+                <article class="changelog-item">
+                    <span class="changelog-version">v4.1</span>
+                    <div>
+                        <h3>Versioned changelog</h3>
+                        <p>Added the visible version badge and floating changelog window for major feature history.</p>
+                    </div>
+                </article>
+                <article class="changelog-item">
+                    <span class="changelog-version">v4.0</span>
+                    <div>
+                        <h3>Competition dashboard</h3>
+                        <p>Added the wider desktop layout, medal scoreboard, saved-game browser, grouped captures, and stable game-history panels.</p>
+                    </div>
+                </article>
+                <article class="changelog-item">
+                    <span class="changelog-version">v3.0</span>
+                    <div>
+                        <h3>Shared game archive</h3>
+                        <p>Added Mum, David, and Anonymous player selection with Supabase-backed PGN storage and scoreboard totals.</p>
+                    </div>
+                </article>
+                <article class="changelog-item">
+                    <span class="changelog-version">v2.0</span>
+                    <div>
+                        <h3>Game review tools</h3>
+                        <p>Added clickable move history, arrow-key traversal, and review mode for completed games.</p>
+                    </div>
+                </article>
+                <article class="changelog-item">
+                    <span class="changelog-version">v1.0</span>
+                    <div>
+                        <h3>Playable browser chess</h3>
+                        <p>Initial browser chess game with AI difficulty, local play, move history, captured pieces, board flip, undo, sound, and PGN export.</p>
+                    </div>
+                </article>
             </div>
         </div>
     </div>

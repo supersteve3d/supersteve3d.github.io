@@ -10,6 +10,7 @@ const SUPABASE_URL = 'https://duvohiskcdlsvawyvhpq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_SnqVU4BFVL237B2ZOJeRVg_0KyPpr_o';
 const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
+const APP_VERSION = '4.1';
 
 // State variables
 let boardFlipped = false;
@@ -457,6 +458,14 @@ function loadSavedGame(savedGame) {
 
     updateUI();
     setSaveStatus(`Loaded ${savedGame.player}'s saved game.`, 'success');
+}
+
+function openChangelog() {
+    document.getElementById('changelog-overlay').classList.remove('hidden');
+}
+
+function closeChangelog() {
+    document.getElementById('changelog-overlay').classList.add('hidden');
 }
 
 // Generate the Chess Board dynamically in HTML DOM
@@ -1216,6 +1225,13 @@ document.getElementById('player-name').addEventListener('change', (e) => {
 
 document.getElementById('saved-games-filter').addEventListener('change', renderSavedGames);
 document.getElementById('btn-refresh-games').addEventListener('click', fetchSavedGames);
+document.getElementById('btn-changelog').addEventListener('click', openChangelog);
+document.getElementById('btn-changelog-close').addEventListener('click', closeChangelog);
+document.getElementById('changelog-overlay').addEventListener('click', (e) => {
+    if (e.target.id === 'changelog-overlay') {
+        closeChangelog();
+    }
+});
 
 // Toggle Opponent (AI vs Local)
 document.getElementById('game-mode').addEventListener('change', (e) => {
@@ -1381,6 +1397,8 @@ document.addEventListener('keydown', (e) => {
     } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         stepReview(1);
+    } else if (e.key === 'Escape') {
+        closeChangelog();
     }
 });
 
@@ -1397,6 +1415,7 @@ document.addEventListener('click', (e) => {
 
 // Page Initialization
 window.addEventListener('load', () => {
+    document.getElementById('version-badge').textContent = `v${APP_VERSION}`;
     updateSelectedPlayer(document.getElementById('player-name').value);
     updateUI();
     fetchSavedGames();

@@ -126,6 +126,13 @@ h1, h2, h3, .logo-area {
     font-size: 28px;
 }
 
+.title-stack {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .logo-area h1 {
     font-size: 24px;
     font-weight: 800;
@@ -140,6 +147,42 @@ h1, h2, h3, .logo-area {
     -webkit-text-fill-color: initial;
     background: initial;
     margin-left: 2px;
+}
+
+.version-badge {
+    color: #bbf7d0;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: rgba(16, 185, 129, 0.14);
+    border: 1px solid rgba(16, 185, 129, 0.28);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.header-link {
+    color: #c7d2fe;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(99, 102, 241, 0.28);
+    background: rgba(99, 102, 241, 0.1);
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.header-link:hover {
+    background: rgba(99, 102, 241, 0.2);
+    color: #ffffff;
 }
 
 .status-indicator {
@@ -1018,6 +1061,81 @@ h1, h2, h3, .logo-area {
     flex-wrap: wrap;
 }
 
+.floating-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(10, 12, 16, 0.62);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.floating-card {
+    width: min(560px, 100%);
+    max-height: min(720px, calc(100vh - 40px));
+    overflow-y: auto;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(22, 28, 41, 0.96);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.72);
+    padding: 24px;
+}
+
+.floating-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.floating-card-header h2 {
+    font-size: 24px;
+    margin-bottom: 4px;
+}
+
+.floating-card-header p {
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.changelog-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.changelog-item {
+    display: grid;
+    grid-template-columns: 62px 1fr;
+    gap: 14px;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.changelog-version {
+    color: #bbf7d0;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.changelog-item h3 {
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.changelog-item p {
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
 /* Promotion Modal override */
 #promotion-overlay {
     position: fixed; /* Global viewport overlay for pawn promotion */
@@ -1112,13 +1230,27 @@ h1, h2, h3, .logo-area {
     }
     .app-header {
         padding: 12px 16px;
+        align-items: flex-start;
+        gap: 10px;
+        flex-direction: column;
+    }
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
     }
     .logo-area h1 {
         font-size: 20px;
     }
+    .version-badge {
+        font-size: 12px;
+    }
     .status-indicator {
         font-size: 13px;
         padding: 6px 12px;
+    }
+    .changelog-item {
+        grid-template-columns: 1fr;
+        gap: 6px;
     }
     .panel {
         padding: 16px;
