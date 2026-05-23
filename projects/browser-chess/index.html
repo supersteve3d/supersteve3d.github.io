@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Steve's Vibe Coded Chess Program</title>
+    <title>Steve's Vibe Chess v4.2</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,7 +47,7 @@
                 <span class="logo-icon">👑</span>
                 <div class="title-stack">
                     <h1>Steve's <span>Vibe Chess</span></h1>
-                    <span class="version-badge" id="version-badge">v4.1</span>
+                    <span class="version-badge" id="version-badge">v4.2</span>
                 </div>
             </div>
             <div class="header-actions">
@@ -163,22 +163,25 @@
                     <h2>Scoreboard</h2>
                     <div class="scoreboard" id="scoreboard">
                         <div class="score-row" data-player="Mum">
-                            <span class="score-medal" aria-hidden="true">1</span>
+                            <span class="score-medal" aria-label="0 competition points">0</span>
                             <span class="score-player">Mum</span>
                             <span><strong id="score-mum-wins" data-score="wins">0</strong> wins</span>
                             <span><strong id="score-mum-played" data-score="played">0</strong> played</span>
+                            <span><strong id="score-mum-average" data-score="average">-</strong> avg</span>
                         </div>
                         <div class="score-row" data-player="David">
-                            <span class="score-medal" aria-hidden="true">2</span>
+                            <span class="score-medal" aria-label="0 competition points">0</span>
                             <span class="score-player">David</span>
                             <span><strong id="score-david-wins" data-score="wins">0</strong> wins</span>
                             <span><strong id="score-david-played" data-score="played">0</strong> played</span>
+                            <span><strong id="score-david-average" data-score="average">-</strong> avg</span>
                         </div>
                         <div class="score-row" data-player="Anonymous">
-                            <span class="score-medal" aria-hidden="true">3</span>
+                            <span class="score-medal" aria-label="0 competition points">0</span>
                             <span class="score-player">Anonymous</span>
                             <span><strong id="score-anonymous-wins" data-score="wins">0</strong> wins</span>
                             <span><strong id="score-anonymous-played" data-score="played">0</strong> played</span>
+                            <span><strong id="score-anonymous-average" data-score="average">-</strong> avg</span>
                         </div>
                     </div>
                     <div class="save-status" id="save-status">Saved games sync when Supabase is ready.</div>
@@ -268,6 +271,13 @@
                 </button>
             </div>
             <div class="changelog-list">
+                <article class="changelog-item">
+                    <span class="changelog-version">v4.2</span>
+                    <div>
+                        <h3>Competition points</h3>
+                        <p>Added difficulty-weighted scoreboard points, average move counts, and move-length bonuses for decisive games.</p>
+                    </div>
+                </article>
                 <article class="changelog-item">
                     <span class="changelog-version">v4.1</span>
                     <div>

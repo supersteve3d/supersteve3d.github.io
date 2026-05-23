@@ -10,7 +10,13 @@ const SUPABASE_URL = 'https://duvohiskcdlsvawyvhpq.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_SnqVU4BFVL237B2ZOJeRVg_0KyPpr_o';
 const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
-const APP_VERSION = '4.1';
+const APP_VERSION = '4.2';
+const DIFFICULTY_POINTS = {
+    easy: 3,
+    medium: 5,
+    hard: 8,
+    local: 5
+};
 
 // State variables
 let boardFlipped = false;
@@ -251,6 +257,37 @@ function getGameResultLabel(result) {
     return 'Unfinished';
 }
 
+function getFullMoveCount(savedGame) {
+    return savedGame.half_moves ? Math.ceil(savedGame.half_moves / 2) : 0;
+}
+
+function getSavedGameDifficulty(savedGame) {
+    if (savedGame.game_mode === 'local') return 'local';
+    return savedGame.ai_difficulty || 'medium';
+}
+
+function getMoveLengthBonus(fullMoves) {
+    if (!fullMoves) return 0;
+    if (fullMoves <= 25) return 2;
+    if (fullMoves <= 40) return 1;
+    if (fullMoves >= 70) return -1;
+    return 0;
+}
+
+function getCompetitionPoints(savedGame) {
+    const difficulty = getSavedGameDifficulty(savedGame);
+    const basePoints = DIFFICULTY_POINTS[difficulty] || DIFFICULTY_POINTS.medium;
+    const fullMoves = getFullMoveCount(savedGame);
+
+    if (savedGame.result === 'win') {
+        return Math.max(1, basePoints + getMoveLengthBonus(fullMoves));
+    }
+    if (savedGame.result === 'draw') {
+        return Math.max(1, Math.floor(basePoints / 2));
+    }
+    return 0;
+}
+
 function buildSavedGamePayload() {
     const history = game.history({ verbose: true });
     return {
@@ -335,25 +372,32 @@ function updateSelectedPlayer(player) {
 function renderScoreboard() {
     const scoreboard = document.getElementById('scoreboard');
     const totals = PLAYER_NAMES.reduce((acc, player) => {
-        acc[player] = { played: 0, wins: 0 };
+        acc[player] = { played: 0, wins: 0, points: 0, fullMoves: 0, gamesWithMoves: 0 };
         return acc;
     }, {});
 
     savedGames.forEach(savedGame => {
         if (!totals[savedGame.player]) return;
+        const fullMoves = getFullMoveCount(savedGame);
         totals[savedGame.player].played += 1;
+        totals[savedGame.player].points += getCompetitionPoints(savedGame);
+        if (fullMoves) {
+            totals[savedGame.player].fullMoves += fullMoves;
+            totals[savedGame.player].gamesWithMoves += 1;
+        }
         if (savedGame.result === 'win') {
             totals[savedGame.player].wins += 1;
         }
     });
 
     const rankedPlayers = [...PLAYER_NAMES].sort((a, b) => {
+        if (totals[b].points !== totals[a].points) return totals[b].points - totals[a].points;
         if (totals[b].wins !== totals[a].wins) return totals[b].wins - totals[a].wins;
         if (totals[b].played !== totals[a].played) return totals[b].played - totals[a].played;
         return PLAYER_NAMES.indexOf(a) - PLAYER_NAMES.indexOf(b);
     });
     const rankClasses = ['rank-gold', 'rank-silver', 'rank-bronze'];
-    const uniqueScores = [...new Set(rankedPlayers.map(player => `${totals[player].wins}:${totals[player].played}`))];
+    const uniqueScores = [...new Set(rankedPlayers.map(player => totals[player].points))];
     const medalByPlayer = {};
 
     if (uniqueScores.length === 1) {
@@ -362,7 +406,7 @@ function renderScoreboard() {
         });
     } else if (uniqueScores.length === 2) {
         const topScore = uniqueScores[0];
-        const topGroup = rankedPlayers.filter(player => `${totals[player].wins}:${totals[player].played}` === topScore);
+        const topGroup = rankedPlayers.filter(player => totals[player].points === topScore);
         rankedPlayers.forEach(player => {
             if (topGroup.length > 1) {
                 medalByPlayer[player] = topGroup.includes(player) ? 1 : 2;
@@ -380,10 +424,15 @@ function renderScoreboard() {
         const row = scoreboard.querySelector(`[data-player="${player}"]`);
         row.classList.remove('rank-gold', 'rank-silver', 'rank-bronze');
         const medalIndex = medalByPlayer[player];
+        const averageMoves = totals[player].gamesWithMoves
+            ? Math.round(totals[player].fullMoves / totals[player].gamesWithMoves)
+            : '-';
         row.classList.add(rankClasses[medalIndex]);
-        row.querySelector('.score-medal').textContent = String(medalIndex + 1);
+        row.querySelector('.score-medal').textContent = totals[player].points;
+        row.querySelector('.score-medal').setAttribute('aria-label', `${totals[player].points} competition points`);
         row.querySelector('[data-score="wins"]').textContent = totals[player].wins;
         row.querySelector('[data-score="played"]').textContent = totals[player].played;
+        row.querySelector('[data-score="average"]').textContent = averageMoves;
         scoreboard.appendChild(row);
     });
 }
