@@ -58,6 +58,15 @@
                     <h2>Game Settings</h2>
 
                     <div class="form-group">
+                        <label for="player-name">Player</label>
+                        <select id="player-name" class="select-control">
+                            <option value="Mum">Mum</option>
+                            <option value="David">David</option>
+                            <option value="Anonymous" selected>Anonymous</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
                         <label for="game-mode">Opponent</label>
                         <select id="game-mode" class="select-control">
                             <option value="ai">Vs. Computer (AI)</option>
@@ -73,6 +82,28 @@
                             <option value="hard">Hard (Master)</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="panel-section stats-section">
+                    <h2>Scoreboard</h2>
+                    <div class="scoreboard" id="scoreboard">
+                        <div class="score-row" data-player="Mum">
+                            <span class="score-player">Mum</span>
+                            <span><strong id="score-mum-wins">0</strong> wins</span>
+                            <span><strong id="score-mum-played">0</strong> played</span>
+                        </div>
+                        <div class="score-row" data-player="David">
+                            <span class="score-player">David</span>
+                            <span><strong id="score-david-wins">0</strong> wins</span>
+                            <span><strong id="score-david-played">0</strong> played</span>
+                        </div>
+                        <div class="score-row" data-player="Anonymous">
+                            <span class="score-player">Anonymous</span>
+                            <span><strong id="score-anonymous-wins">0</strong> wins</span>
+                            <span><strong id="score-anonymous-played">0</strong> played</span>
+                        </div>
+                    </div>
+                    <div class="save-status" id="save-status">Saved games sync when Supabase is ready.</div>
                 </div>
 
                 <div class="panel-section">
@@ -99,6 +130,27 @@
                             <svg class="btn-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                             <span id="btn-export-text">Export to Lichess (PGN)</span>
                         </button>
+                    </div>
+                </div>
+
+                <div class="panel-section saved-games-section">
+                    <div class="section-title-row">
+                        <h2>Saved Games</h2>
+                        <button id="btn-refresh-games" class="icon-btn" title="Refresh saved games" aria-label="Refresh saved games">
+                            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                        </button>
+                    </div>
+                    <div class="form-group compact-form-group">
+                        <label for="saved-games-filter">Show</label>
+                        <select id="saved-games-filter" class="select-control">
+                            <option value="all">All players</option>
+                            <option value="Mum">Mum</option>
+                            <option value="David">David</option>
+                            <option value="Anonymous">Anonymous</option>
+                        </select>
+                    </div>
+                    <div class="saved-games-list" id="saved-games-list">
+                        <div class="saved-game-empty">No saved games loaded.</div>
                     </div>
                 </div>
 

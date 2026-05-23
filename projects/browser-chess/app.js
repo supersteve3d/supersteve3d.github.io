@@ -6,12 +6,18 @@
 // Initialize chess.js
 let game = new Chess();
 
+const SUPABASE_URL = 'https://duvohiskcdlsvawyvhpq.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_SnqVU4BFVL237B2ZOJeRVg_0KyPpr_o';
+const SUPABASE_GAMES_TABLE = 'browser_chess_games';
+const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
+
 // State variables
 let boardFlipped = false;
 let selectedSquare = null;
 let validMoves = [];
 let gameMode = 'ai'; // 'ai' or 'local'
 let aiDifficulty = 'medium'; // 'easy', 'medium', 'hard'
+let currentPlayer = 'Anonymous';
 let soundEnabled = true;
 let isAiThinking = false;
 let pendingPromotion = null; // Stores { from, to } during promotion selection
@@ -19,6 +25,9 @@ let audioCtx = null;
 let lastMove = null; // Stores { from, to } for highlight
 let reviewPly = null; // null means live position; otherwise number of half-moves shown
 let gameOverOverlayDismissed = false;
+let savedGames = [];
+let currentGameSaved = false;
+let currentLoadedGameId = null;
 
 // Piece-Square Tables (PST) for AI positional evaluation
 // Values represent hundredths of a pawn (centipawns)
@@ -193,6 +202,231 @@ function playSound(type) {
             });
             break;
     }
+}
+
+function getSupabaseHeaders(extraHeaders = {}) {
+    return {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        ...extraHeaders
+    };
+}
+
+function setSaveStatus(message, type = '') {
+    const el = document.getElementById('save-status');
+    if (!el) return;
+    el.textContent = message;
+    el.classList.remove('success', 'error');
+    if (type) el.classList.add(type);
+}
+
+function formatSavedGameDate(value) {
+    if (!value) return 'Unknown date';
+    return new Intl.DateTimeFormat(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+    }).format(new Date(value));
+}
+
+function getPlayerColor() {
+    return 'w';
+}
+
+function getGameResultForCurrentPlayer() {
+    if (game.in_draw()) return 'draw';
+    if (!game.in_checkmate()) return 'unfinished';
+
+    const winnerColor = game.turn() === 'w' ? 'b' : 'w';
+    return winnerColor === getPlayerColor() ? 'win' : 'loss';
+}
+
+function getGameResultLabel(result) {
+    if (result === 'win') return 'Win';
+    if (result === 'loss') return 'Loss';
+    if (result === 'draw') return 'Draw';
+    return 'Unfinished';
+}
+
+function buildSavedGamePayload() {
+    const history = game.history({ verbose: true });
+    return {
+        player: currentPlayer,
+        result: getGameResultForCurrentPlayer(),
+        pgn: game.pgn(),
+        opponent: gameMode === 'ai' ? `Computer (${aiDifficulty})` : 'Local Player',
+        game_mode: gameMode,
+        ai_difficulty: gameMode === 'ai' ? aiDifficulty : null,
+        half_moves: history.length
+    };
+}
+
+async function fetchSavedGames() {
+    setSaveStatus('Loading saved games...');
+
+    try {
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/${SUPABASE_GAMES_TABLE}?select=*&order=created_at.desc&limit=80`,
+            { headers: getSupabaseHeaders() }
+        );
+
+        if (!response.ok) {
+            throw new Error(`Supabase returned ${response.status}`);
+        }
+
+        savedGames = await response.json();
+        renderScoreboard();
+        renderSavedGames();
+        setSaveStatus('Saved games synced.', 'success');
+    } catch (error) {
+        console.error('Could not load saved games:', error);
+        savedGames = [];
+        renderScoreboard();
+        renderSavedGames();
+        setSaveStatus('Could not sync saved games. Check the Supabase table and policies.', 'error');
+    }
+}
+
+async function saveCompletedGame() {
+    if (currentGameSaved || currentLoadedGameId || !game.game_over()) return;
+
+    const payload = buildSavedGamePayload();
+    if (payload.result === 'unfinished') return;
+
+    currentGameSaved = true;
+    setSaveStatus('Saving completed game...');
+
+    try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_GAMES_TABLE}`, {
+            method: 'POST',
+            headers: getSupabaseHeaders({
+                'Content-Type': 'application/json',
+                Prefer: 'return=representation'
+            }),
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            currentGameSaved = false;
+            throw new Error(`Supabase returned ${response.status}`);
+        }
+
+        const createdRows = await response.json();
+        savedGames = [...createdRows, ...savedGames];
+        renderScoreboard();
+        renderSavedGames();
+        setSaveStatus('Game saved.', 'success');
+    } catch (error) {
+        console.error('Could not save game:', error);
+        setSaveStatus('Game not saved. Check the Supabase table and policies.', 'error');
+    }
+}
+
+function updateSelectedPlayer(player) {
+    currentPlayer = PLAYER_NAMES.includes(player) ? player : 'Anonymous';
+    document.getElementById('white-player-name').textContent = currentPlayer === 'Anonymous'
+        ? 'Player 1 (White)'
+        : `${currentPlayer} (White)`;
+}
+
+function renderScoreboard() {
+    const totals = PLAYER_NAMES.reduce((acc, player) => {
+        acc[player] = { played: 0, wins: 0 };
+        return acc;
+    }, {});
+
+    savedGames.forEach(savedGame => {
+        if (!totals[savedGame.player]) return;
+        totals[savedGame.player].played += 1;
+        if (savedGame.result === 'win') {
+            totals[savedGame.player].wins += 1;
+        }
+    });
+
+    const ids = {
+        Mum: ['score-mum-wins', 'score-mum-played'],
+        David: ['score-david-wins', 'score-david-played'],
+        Anonymous: ['score-anonymous-wins', 'score-anonymous-played']
+    };
+
+    PLAYER_NAMES.forEach(player => {
+        document.getElementById(ids[player][0]).textContent = totals[player].wins;
+        document.getElementById(ids[player][1]).textContent = totals[player].played;
+    });
+}
+
+function renderSavedGames() {
+    const list = document.getElementById('saved-games-list');
+    const filter = document.getElementById('saved-games-filter').value;
+    const gamesToRender = filter === 'all'
+        ? savedGames
+        : savedGames.filter(savedGame => savedGame.player === filter);
+
+    list.innerHTML = '';
+
+    if (gamesToRender.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'saved-game-empty';
+        empty.textContent = 'No saved games yet.';
+        list.appendChild(empty);
+        return;
+    }
+
+    gamesToRender.forEach(savedGame => {
+        const card = document.createElement('div');
+        card.className = 'saved-game-card';
+
+        const info = document.createElement('div');
+
+        const title = document.createElement('div');
+        title.className = 'saved-game-title';
+        title.textContent = `${savedGame.player} - ${getGameResultLabel(savedGame.result)}`;
+
+        const meta = document.createElement('div');
+        meta.className = 'saved-game-meta';
+        const moves = savedGame.half_moves ? `${Math.ceil(savedGame.half_moves / 2)} moves` : 'PGN saved';
+        meta.textContent = `${formatSavedGameDate(savedGame.created_at)} | ${moves} | ${savedGame.opponent || 'Opponent'}`;
+
+        info.appendChild(title);
+        info.appendChild(meta);
+
+        const button = document.createElement('button');
+        button.className = 'saved-game-review';
+        button.type = 'button';
+        button.textContent = 'Review';
+        button.addEventListener('click', () => loadSavedGame(savedGame));
+
+        card.appendChild(info);
+        card.appendChild(button);
+        list.appendChild(card);
+    });
+}
+
+function loadSavedGame(savedGame) {
+    const loaded = game.load_pgn(savedGame.pgn);
+    if (!loaded) {
+        setSaveStatus('Could not load that saved PGN.', 'error');
+        return;
+    }
+
+    currentPlayer = savedGame.player;
+    document.getElementById('player-name').value = currentPlayer;
+    currentLoadedGameId = savedGame.id;
+    currentGameSaved = true;
+    reviewPly = null;
+    selectedSquare = null;
+    validMoves = [];
+    gameOverOverlayDismissed = true;
+    document.getElementById('game-over-overlay').classList.add('hidden');
+
+    const history = game.history({ verbose: true });
+    const prev = history[history.length - 1];
+    lastMove = prev ? { from: prev.from, to: prev.to } : null;
+
+    updateUI();
+    setSaveStatus(`Loaded ${savedGame.player}'s saved game.`, 'success');
 }
 
 // Generate the Chess Board dynamically in HTML DOM
@@ -511,6 +745,10 @@ function executeMove(from, to, promotion = null) {
 
     // Update Board and UI Panels
     updateUI();
+
+    if (game.game_over()) {
+        saveCompletedGame();
+    }
 
     // Trigger AI turn if game mode is AI and it is Black's turn
     if (gameMode === 'ai' && game.turn() === 'b' && !game.game_over()) {
@@ -927,6 +1165,16 @@ function minimaxSearch(depth, isMaximizing, alpha, beta) {
 // EVENT HANDLERS & BUTTON BINDINGS
 // -------------------------------------------------------------
 
+document.getElementById('player-name').addEventListener('change', (e) => {
+    updateSelectedPlayer(e.target.value);
+    if (game.history().length === 0) {
+        setSaveStatus(`Ready for ${currentPlayer}.`);
+    }
+});
+
+document.getElementById('saved-games-filter').addEventListener('change', renderSavedGames);
+document.getElementById('btn-refresh-games').addEventListener('click', fetchSavedGames);
+
 // Toggle Opponent (AI vs Local)
 document.getElementById('game-mode').addEventListener('change', (e) => {
     gameMode = e.target.value;
@@ -981,6 +1229,8 @@ function restartGame() {
     validMoves = [];
     lastMove = null;
     reviewPly = null;
+    currentGameSaved = false;
+    currentLoadedGameId = null;
     gameOverOverlayDismissed = false;
     document.getElementById('game-over-overlay').classList.add('hidden');
     updateUI();
@@ -1105,5 +1355,7 @@ document.addEventListener('click', (e) => {
 
 // Page Initialization
 window.addEventListener('load', () => {
+    updateSelectedPlayer(document.getElementById('player-name').value);
     updateUI();
+    fetchSavedGames();
 });
