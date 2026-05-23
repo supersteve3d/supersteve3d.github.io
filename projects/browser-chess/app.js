@@ -550,11 +550,20 @@ function updateMoveHistory() {
 function updateCapturedPieces() {
     const whiteCaptures = document.getElementById('white-captures');
     const blackCaptures = document.getElementById('black-captures');
+    const whiteMaterial = document.getElementById('white-material');
+    const blackMaterial = document.getElementById('black-material');
     whiteCaptures.innerHTML = '';
     blackCaptures.innerHTML = '';
+    whiteMaterial.textContent = '';
+    blackMaterial.textContent = '';
+    whiteMaterial.classList.remove('active');
+    blackMaterial.classList.remove('active');
 
     const standardPieces = {
         p: 8, n: 2, b: 2, r: 2, q: 1
+    };
+    const pieceValues = {
+        p: 1, n: 3, b: 3, r: 5, q: 9
     };
 
     const activePieces = {
@@ -571,34 +580,43 @@ function updateCapturedPieces() {
         });
     });
 
+    let whiteCapturedValue = 0;
+    let blackCapturedValue = 0;
+
     // Calculate White captures (White captured Black pieces)
-    // Black captured = Standard Pieces - Remaining Black Pieces
     for (const type in standardPieces) {
         const count = standardPieces[type] - activePieces.b[type];
+        whiteCapturedValue += count * pieceValues[type];
         for (let i = 0; i < count; i++) {
-            const img = document.createElement('img');
-            img.src = `https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/b${type.toUpperCase()}.svg`;
-            img.style.width = '20px';
-            img.style.height = '20px';
-            img.style.objectFit = 'contain';
-            img.style.marginRight = '2px';
-            whiteCaptures.appendChild(img);
+            whiteCaptures.appendChild(createCapturedPieceIcon('b', type));
         }
     }
 
     // Calculate Black captures (Black captured White pieces)
     for (const type in standardPieces) {
         const count = standardPieces[type] - activePieces.w[type];
+        blackCapturedValue += count * pieceValues[type];
         for (let i = 0; i < count; i++) {
-            const img = document.createElement('img');
-            img.src = `https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/w${type.toUpperCase()}.svg`;
-            img.style.width = '20px';
-            img.style.height = '20px';
-            img.style.objectFit = 'contain';
-            img.style.marginRight = '2px';
-            blackCaptures.appendChild(img);
+            blackCaptures.appendChild(createCapturedPieceIcon('w', type));
         }
     }
+
+    const materialDiff = whiteCapturedValue - blackCapturedValue;
+    if (materialDiff > 0) {
+        whiteMaterial.textContent = `+${materialDiff}`;
+        whiteMaterial.classList.add('active');
+    } else if (materialDiff < 0) {
+        blackMaterial.textContent = `+${Math.abs(materialDiff)}`;
+        blackMaterial.classList.add('active');
+    }
+}
+
+function createCapturedPieceIcon(color, type) {
+    const img = document.createElement('img');
+    img.className = `captured-piece ${color === 'b' ? 'captured-piece-black' : 'captured-piece-white'}`;
+    img.src = `https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/cburnett/${color}${type.toUpperCase()}.svg`;
+    img.alt = `${color === 'w' ? 'White' : 'Black'} ${type}`;
+    return img;
 }
 
 // Overlay Card showing results
