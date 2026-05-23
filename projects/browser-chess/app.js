@@ -12,12 +12,13 @@ const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const SUPABASE_LIVE_TABLE = 'browser_chess_live_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
 const HEAD_TO_HEAD_PLAYERS = ['Mum', 'David'];
-const APP_VERSION = '5.0';
+const APP_VERSION = '5.1';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
     hard: 8,
-    local: 5
+    local: 0,
+    online: 20
 };
 
 // State variables
@@ -311,6 +312,7 @@ function getFullMoveCount(savedGame) {
 }
 
 function getSavedGameDifficulty(savedGame) {
+    if (savedGame.game_mode === 'online') return 'online';
     if (savedGame.game_mode === 'local') return 'local';
     return savedGame.ai_difficulty || 'medium';
 }
@@ -332,6 +334,7 @@ function getCompetitionPoints(savedGame) {
         return Math.max(1, basePoints + getMoveLengthBonus(fullMoves));
     }
     if (savedGame.result === 'draw') {
+        if (difficulty === 'online') return 8;
         return Math.max(1, Math.floor(basePoints / 2));
     }
     return 0;
