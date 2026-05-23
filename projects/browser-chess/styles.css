@@ -394,7 +394,7 @@ h1, h2, h3, .logo-area {
 .move-history-scroll {
     flex-grow: 1;
     overflow-y: auto;
-    max-height: 250px;
+    height: 250px;
     background: rgba(10, 12, 16, 0.4);
     border: 1px solid var(--panel-border);
     border-radius: 16px;
@@ -904,6 +904,6 @@ h1, h2, h3, .logo-area {
         font-size: 7px;
     }
     .move-history-scroll {
-        max-height: 160px;
+        height: 160px;
     }
 }
