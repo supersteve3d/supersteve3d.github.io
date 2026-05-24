@@ -12,7 +12,7 @@ const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const SUPABASE_LIVE_TABLE = 'browser_chess_live_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
 const HEAD_TO_HEAD_PLAYERS = ['Mum', 'David'];
-const APP_VERSION = '5.8';
+const APP_VERSION = '5.9';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
@@ -1147,6 +1147,8 @@ function renderAnnotationLayer(boardElement) {
         const circleElement = document.createElement('div');
         circleElement.className = 'annotation-circle';
         if (circle.draft) circleElement.classList.add('draft');
+        circleElement.style.borderColor = '#ffe500';
+        circleElement.style.boxShadow = '0 0 14px rgba(255, 229, 0, 0.34)';
         square.appendChild(circleElement);
     });
 
@@ -1170,7 +1172,7 @@ function renderAnnotationLayer(boardElement) {
 
     const markerPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     markerPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
-    markerPath.setAttribute('fill', 'rgba(34, 197, 94, 0.82)');
+    markerPath.setAttribute('fill', '#ef233c');
     marker.appendChild(markerPath);
     defs.appendChild(marker);
     svg.appendChild(defs);
@@ -1195,6 +1197,8 @@ function renderAnnotationLayer(boardElement) {
         line.setAttribute('y1', String(start.y));
         line.setAttribute('x2', String(lineEnd.x));
         line.setAttribute('y2', String(lineEnd.y));
+        line.setAttribute('stroke', '#ef233c');
+        line.setAttribute('stroke-width', '1.35');
         line.setAttribute('marker-end', 'url(#annotation-arrowhead)');
         svg.appendChild(line);
     });
@@ -2377,6 +2381,11 @@ document.addEventListener('keydown', (e) => {
     } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         stepReview(1);
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (boardArrows.length > 0 || boardCircles.length > 0 || annotationTapFrom) {
+            e.preventDefault();
+            clearBoardAnnotations();
+        }
     } else if (e.key === 'Escape') {
         closeChangelog();
         closeScoringGuide();
