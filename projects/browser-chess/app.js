@@ -12,7 +12,7 @@ const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const SUPABASE_LIVE_TABLE = 'browser_chess_live_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
 const HEAD_TO_HEAD_PLAYERS = ['Mum', 'David'];
-const APP_VERSION = '5.7';
+const APP_VERSION = '5.8';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
@@ -31,6 +31,13 @@ let playerColor = 'w';
 let onlineRole = 'player';
 let pieceTheme = 'classic'; // 'classic' or future hosted custom sets
 let funEffectsEnabled = true;
+let annotationMode = false;
+let annotationDrag = null;
+let annotationDraft = null;
+let annotationTapFrom = null;
+let suppressAnnotationClick = false;
+const boardArrows = [];
+const boardCircles = [];
 let currentPlayer = 'Anonymous';
 let soundEnabled = true;
 let isAiThinking = false;
@@ -1084,10 +1091,195 @@ function closeScoringGuide() {
     document.getElementById('scoring-overlay').classList.add('hidden');
 }
 
+function toggleBoardCircle(square) {
+    const existingIndex = boardCircles.findIndex(circle => circle.from === square);
+    if (existingIndex >= 0) {
+        boardCircles.splice(existingIndex, 1);
+    } else {
+        boardCircles.push({ from: square });
+    }
+}
+
+function toggleBoardArrow(from, to) {
+    const existingIndex = boardArrows.findIndex(arrow => arrow.from === from && arrow.to === to);
+    if (existingIndex >= 0) {
+        boardArrows.splice(existingIndex, 1);
+    } else {
+        boardArrows.push({ from, to });
+    }
+}
+
+function clearBoardAnnotations() {
+    boardArrows.length = 0;
+    boardCircles.length = 0;
+    annotationDraft = null;
+    annotationDrag = null;
+    annotationTapFrom = null;
+    renderBoard();
+}
+
+function updateAnnotationModeButton() {
+    const button = document.getElementById('btn-annotate');
+    if (!button) return;
+    button.classList.toggle('active', annotationMode);
+    button.setAttribute('aria-pressed', annotationMode ? 'true' : 'false');
+}
+
+function squareCenter(squareName) {
+    const fileIndex = squareName.charCodeAt(0) - 97;
+    const rankIndex = 8 - Number(squareName[1]);
+    const xIndex = boardFlipped ? 7 - fileIndex : fileIndex;
+    const yIndex = boardFlipped ? 7 - rankIndex : rankIndex;
+    return {
+        x: (xIndex + 0.5) * 12.5,
+        y: (yIndex + 0.5) * 12.5
+    };
+}
+
+function renderAnnotationLayer(boardElement) {
+    const circles = annotationTapFrom && !boardCircles.some(circle => circle.from === annotationTapFrom)
+        ? [...boardCircles, { from: annotationTapFrom, draft: true }]
+        : boardCircles;
+
+    circles.forEach(circle => {
+        const square = boardElement.querySelector(`.square[data-square="${circle.from}"]`);
+        if (!square) return;
+        const circleElement = document.createElement('div');
+        circleElement.className = 'annotation-circle';
+        if (circle.draft) circleElement.classList.add('draft');
+        square.appendChild(circleElement);
+    });
+
+    const arrows = annotationDraft ? [...boardArrows, annotationDraft] : boardArrows;
+    if (arrows.length === 0) return;
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.classList.add('annotation-layer');
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.setAttribute('preserveAspectRatio', 'none');
+
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    marker.setAttribute('id', 'annotation-arrowhead');
+    marker.setAttribute('viewBox', '0 0 10 10');
+    marker.setAttribute('refX', '8');
+    marker.setAttribute('refY', '5');
+    marker.setAttribute('markerWidth', '4');
+    marker.setAttribute('markerHeight', '4');
+    marker.setAttribute('orient', 'auto-start-reverse');
+
+    const markerPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    markerPath.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+    markerPath.setAttribute('fill', 'rgba(34, 197, 94, 0.82)');
+    marker.appendChild(markerPath);
+    defs.appendChild(marker);
+    svg.appendChild(defs);
+
+    arrows.forEach(arrow => {
+        if (arrow.from === arrow.to) return;
+        const start = squareCenter(arrow.from);
+        const end = squareCenter(arrow.to);
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const length = Math.hypot(dx, dy) || 1;
+        const trim = 4.2;
+        const lineEnd = {
+            x: end.x - (dx / length) * trim,
+            y: end.y - (dy / length) * trim
+        };
+
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.classList.add('annotation-arrow-line');
+        if (arrow === annotationDraft) line.classList.add('draft');
+        line.setAttribute('x1', String(start.x));
+        line.setAttribute('y1', String(start.y));
+        line.setAttribute('x2', String(lineEnd.x));
+        line.setAttribute('y2', String(lineEnd.y));
+        line.setAttribute('marker-end', 'url(#annotation-arrowhead)');
+        svg.appendChild(line);
+    });
+
+    boardElement.appendChild(svg);
+}
+
+function getSquareFromPointerEvent(e) {
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    return target ? target.closest('.square') : null;
+}
+
+function startBoardAnnotation(e, squareName) {
+    if (e.button !== 2 && !annotationMode) return false;
+    e.preventDefault();
+    e.stopPropagation();
+    annotationDrag = { from: squareName, to: squareName, moved: false, button: e.button };
+    annotationDraft = null;
+    return true;
+}
+
+function updateBoardAnnotationDrag(e) {
+    if (!annotationDrag) return;
+    const square = getSquareFromPointerEvent(e);
+    if (!square) return;
+    const nextSquare = square.dataset.square;
+    annotationDrag.moved = annotationDrag.moved || nextSquare !== annotationDrag.from;
+    annotationDrag.to = nextSquare;
+    annotationDraft = annotationDrag.moved
+        ? { from: annotationDrag.from, to: annotationDrag.to }
+        : null;
+    renderBoard();
+}
+
+function finishBoardAnnotation(e) {
+    if (!annotationDrag) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const { from, to, moved } = annotationDrag;
+    if (annotationMode && annotationDrag.button !== 2 && !moved) {
+        annotationDrag = null;
+        annotationDraft = null;
+        handleAnnotationTap(from);
+        suppressAnnotationClick = true;
+        window.setTimeout(() => {
+            suppressAnnotationClick = false;
+        }, 0);
+        return;
+    }
+
+    if (moved && from !== to) {
+        toggleBoardArrow(from, to);
+    } else {
+        toggleBoardCircle(from);
+    }
+
+    annotationDrag = null;
+    annotationDraft = null;
+    annotationTapFrom = null;
+    suppressAnnotationClick = true;
+    window.setTimeout(() => {
+        suppressAnnotationClick = false;
+    }, 0);
+    renderBoard();
+}
+
+function handleAnnotationTap(squareName) {
+    if (!annotationTapFrom) {
+        annotationTapFrom = squareName;
+    } else if (annotationTapFrom === squareName) {
+        toggleBoardCircle(squareName);
+        annotationTapFrom = null;
+    } else {
+        toggleBoardArrow(annotationTapFrom, squareName);
+        annotationTapFrom = null;
+    }
+    renderBoard();
+}
+
 // Generate the Chess Board dynamically in HTML DOM
 function renderBoard() {
     const boardElement = document.getElementById('chess-board');
     boardElement.onclick = handleBoardClick;
+    boardElement.oncontextmenu = (e) => e.preventDefault();
     boardElement.innerHTML = '';
     const displayGame = getDisplayGame();
     const reviewMode = isReviewing();
@@ -1099,6 +1291,7 @@ function renderBoard() {
     } else {
         boardElement.classList.remove('flipped');
     }
+    boardElement.classList.toggle('annotating', annotationMode);
 
     const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
     const ranks = [8, 7, 6, 5, 4, 3, 2, 1];
@@ -1131,6 +1324,7 @@ function renderBoard() {
             const squareDiv = document.createElement('div');
             squareDiv.className = `square ${(r + c) % 2 === 0 ? 'light' : 'dark'}`;
             squareDiv.dataset.square = squareName;
+            squareDiv.addEventListener('pointerdown', (e) => startBoardAnnotation(e, squareName));
 
             // Add highlighting if it's part of the last move
             if (displayLastMove && (displayLastMove.from === squareName || displayLastMove.to === squareName)) {
@@ -1232,6 +1426,7 @@ function renderBoard() {
             boardElement.appendChild(squareDiv);
         }
     }
+    renderAnnotationLayer(boardElement);
 }
 
 function getLivePlyCount() {
@@ -1300,6 +1495,12 @@ function handleBoardClick(e) {
     if (!squareElement || !e.currentTarget.contains(squareElement)) return;
 
     e.stopPropagation();
+    if (annotationMode) {
+        if (suppressAnnotationClick) return;
+        handleAnnotationTap(squareElement.dataset.square);
+        return;
+    }
+
     initAudio();
     if (isReviewing() || isAiThinking) return;
 
@@ -1937,6 +2138,13 @@ document.getElementById('scoring-overlay').addEventListener('click', (e) => {
 document.getElementById('btn-create-room').addEventListener('click', createLiveRoom);
 document.getElementById('btn-join-room').addEventListener('click', joinLiveRoom);
 document.getElementById('btn-leave-room').addEventListener('click', () => leaveLiveGame());
+document.getElementById('btn-annotate').addEventListener('click', () => {
+    annotationMode = !annotationMode;
+    annotationTapFrom = null;
+    updateAnnotationModeButton();
+    renderBoard();
+});
+document.getElementById('btn-clear-annotations').addEventListener('click', clearBoardAnnotations);
 document.getElementById('room-code-input').addEventListener('input', (e) => {
     e.target.value = normalizeRoomCode(e.target.value);
 });
@@ -2175,6 +2383,14 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+window.addEventListener('pointermove', updateBoardAnnotationDrag);
+window.addEventListener('pointerup', finishBoardAnnotation);
+window.addEventListener('blur', () => {
+    annotationDrag = null;
+    annotationDraft = null;
+    renderBoard();
+});
+
 // Click outside board clears selection
 document.addEventListener('click', (e) => {
     if (!e.target.closest('#chess-board') && !e.target.closest('#promotion-overlay')) {
@@ -2189,6 +2405,7 @@ document.addEventListener('click', (e) => {
 // Page Initialization
 window.addEventListener('load', () => {
     document.getElementById('version-badge').textContent = `v${APP_VERSION}`;
+    updateAnnotationModeButton();
     updateSelectedPlayer(document.getElementById('player-name').value);
     updateLiveRoomDisplay();
     updateUI();
