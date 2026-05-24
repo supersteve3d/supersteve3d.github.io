@@ -12,7 +12,7 @@ const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const SUPABASE_LIVE_TABLE = 'browser_chess_live_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
 const HEAD_TO_HEAD_PLAYERS = ['Mum', 'David'];
-const APP_VERSION = '5.3';
+const APP_VERSION = '5.4';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
@@ -295,6 +295,44 @@ function getPieceGlyph(type) {
         n: 'N',
         p: 'P'
     }[type] || '?';
+}
+
+function getCaptureEffectScale(type) {
+    return {
+        p: 1,
+        n: 1.45,
+        b: 1.45,
+        r: 1.9,
+        q: 4.8
+    }[type] || 1;
+}
+
+function setCaptureBurstScale(el, scale) {
+    const visualScale = Math.min(scale, 2.4);
+    const sparkBase = [
+        [-46, -36],
+        [42, -34],
+        [-48, 28],
+        [46, 32],
+        [0, -54],
+        [0, 48]
+    ];
+
+    el.style.setProperty('--burst-font-size', `${16 * Math.min(scale, 2.2)}px`);
+    el.style.setProperty('--word-start-scale', `${0.35 * scale}`);
+    el.style.setProperty('--word-pop-scale', `${1.05 * scale}`);
+    el.style.setProperty('--word-end-scale', `${0.92 * scale}`);
+    el.style.setProperty('--word-mid-rise', `${-90 * visualScale}%`);
+    el.style.setProperty('--word-end-rise', `${-138 * visualScale}%`);
+    el.style.setProperty('--ring-start-scale', `${0.2 * scale}`);
+    el.style.setProperty('--ring-end-scale', `${5.2 * scale}`);
+    el.style.setProperty('--spark-size', `${10 * Math.min(scale, 2.4)}px`);
+    el.style.setProperty('--spark-end-scale', `${1.2 + scale * 0.35}`);
+
+    sparkBase.forEach(([x, y], index) => {
+        el.style.setProperty(`--spark-${index + 1}-x`, `${x * scale}px`);
+        el.style.setProperty(`--spark-${index + 1}-y`, `${y * scale}px`);
+    });
 }
 
 function getPieceMarkup(color, type) {
@@ -1282,8 +1320,13 @@ function triggerCaptureCelebration(squareName, move) {
     burst.className = 'capture-celebration';
     burst.style.left = `${squareRect.left - wrapperRect.left + squareRect.width / 2}px`;
     burst.style.top = `${squareRect.top - wrapperRect.top + squareRect.height / 2}px`;
+    setCaptureBurstScale(burst, getCaptureEffectScale(move.captured || 'p'));
 
-    const captions = move.promotion ? ['POWER!', 'QUEEN!'] : ['POW!', 'ZAP!', 'BOOM!'];
+    const captions = move.captured === 'q'
+        ? ['QUEEN!', 'MEGA!', 'KABOOM!']
+        : move.promotion
+            ? ['POWER!', 'QUEEN!']
+            : ['POW!', 'ZAP!', 'BOOM!'];
     const caption = captions[Math.floor(Math.random() * captions.length)];
     burst.innerHTML = `
         <span class="capture-word">${caption}</span>
