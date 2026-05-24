@@ -211,12 +211,23 @@ h1, h2, h3, .logo-area {
 /* Layout */
 .game-layout {
     display: grid;
-    grid-template-columns: minmax(270px, 310px) minmax(460px, 1fr) minmax(320px, 360px);
+    grid-template-columns: minmax(330px, 370px) minmax(460px, 1fr) minmax(280px, 300px);
     grid-template-areas:
         "left board right";
     gap: 24px;
     align-items: start;
     min-width: 0;
+}
+
+@media (min-width: 1181px) {
+    .control-panel .select-control {
+        font-size: 12px;
+        padding: 9px 10px;
+    }
+
+    .control-panel .form-group label {
+        font-size: 12px;
+    }
 }
 
 .side-stack {
@@ -1594,17 +1605,30 @@ h1, h2, h3, .logo-area {
         gap: 12px;
     }
     .score-row {
-        grid-template-columns: 32px minmax(0, 1fr);
-        gap: 6px 10px;
+        grid-template-columns: 26px minmax(62px, 1fr) auto auto auto;
+        gap: 4px;
+        min-height: 30px;
+        padding: 5px 6px;
+        font-size: 10px;
+        white-space: nowrap;
     }
     .score-row span:nth-child(3) {
-        grid-column: 2;
+        grid-column: auto;
     }
     .score-row span:nth-child(4) {
-        grid-column: 2;
+        grid-column: auto;
     }
     .score-row span:nth-child(5) {
-        grid-column: 2;
+        grid-column: auto;
+    }
+    .score-medal {
+        width: 24px;
+        height: 24px;
+        font-size: 9px;
+    }
+    .score-player {
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .app-header {
         padding: 12px 16px;

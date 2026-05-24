@@ -12,7 +12,7 @@ const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const SUPABASE_LIVE_TABLE = 'browser_chess_live_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
 const HEAD_TO_HEAD_PLAYERS = ['Mum', 'David'];
-const APP_VERSION = '5.5';
+const APP_VERSION = '5.6';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
