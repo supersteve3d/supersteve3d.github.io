@@ -12,7 +12,7 @@ const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const SUPABASE_LIVE_TABLE = 'browser_chess_live_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
 const HEAD_TO_HEAD_PLAYERS = ['Mum', 'David'];
-const APP_VERSION = '6.2';
+const APP_VERSION = '6.3';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
@@ -680,12 +680,23 @@ function renderSavedGames() {
     gamesToRender.forEach(savedGame => {
         const card = document.createElement('div');
         card.className = 'saved-game-card';
+        if (annotationStoreHasMarks(savedGame.annotations)) {
+            card.classList.add('has-annotations');
+            card.title = 'This saved game has analysis marks';
+        }
 
         const info = document.createElement('div');
 
         const title = document.createElement('div');
         title.className = 'saved-game-title';
         title.textContent = `${savedGame.player} - ${getGameResultLabel(savedGame.result)}`;
+        if (annotationStoreHasMarks(savedGame.annotations)) {
+            const note = document.createElement('span');
+            note.className = 'saved-game-note-dot';
+            note.setAttribute('aria-label', 'Has analysis marks');
+            note.title = 'Has analysis marks';
+            title.appendChild(note);
+        }
 
         const meta = document.createElement('div');
         meta.className = 'saved-game-meta';
@@ -1194,6 +1205,17 @@ function normalizeAnnotationStore(value) {
     }, {});
 }
 
+function annotationSetHasMarks(annotations) {
+    return !!annotations && (
+        normalizeAnnotationList(annotations.arrows, true).length > 0 ||
+        normalizeAnnotationList(annotations.circles, false).length > 0
+    );
+}
+
+function annotationStoreHasMarks(store) {
+    return Object.values(normalizeAnnotationStore(store)).some(annotationSetHasMarks);
+}
+
 function serializeAnnotationStore() {
     saveCurrentBoardAnnotations();
     return normalizeAnnotationStore(annotationStore);
@@ -1252,6 +1274,8 @@ async function saveLoadedGameAnnotations() {
         savedGames = savedGames.map(savedGame =>
             (savedGame[currentLoadedGameKey] === currentLoadedGameId) ? { ...savedGame, annotations } : savedGame
         );
+        renderSavedGames();
+        updateMoveHistory();
         if (rows && rows.length) {
             setSaveStatus('Analysis marks saved.', 'success');
         } else {
@@ -1937,6 +1961,22 @@ function updateMoveHistory() {
     const history = game.history({ verbose: true });
     const reviewMode = isReviewing();
 
+    function addMoveText(cell, move, ply) {
+        cell.textContent = '';
+        const label = document.createElement('span');
+        label.textContent = move.san;
+        cell.appendChild(label);
+
+        if (annotationSetHasMarks(annotationStore[String(ply)])) {
+            const note = document.createElement('span');
+            note.className = 'move-note-dot';
+            note.setAttribute('aria-label', 'Has analysis marks');
+            note.title = 'Has analysis marks';
+            cell.appendChild(note);
+            cell.classList.add('has-annotations');
+        }
+    }
+
     for (let i = 0; i < history.length; i += 2) {
         const moveNumber = Math.floor(i / 2) + 1;
         const whiteMove = history[i];
@@ -1952,11 +1992,12 @@ function updateMoveHistory() {
 
         // White move cell
         const tdWhite = document.createElement('td');
-        tdWhite.textContent = whiteMove ? whiteMove.san : '';
+        tdWhite.textContent = '';
         if (whiteMove) {
             tdWhite.className = 'move-history-move';
             tdWhite.dataset.ply = String(i + 1);
             tdWhite.title = 'Jump to this position';
+            addMoveText(tdWhite, whiteMove, i + 1);
             tdWhite.addEventListener('click', () => enterReviewAtPly(i + 1));
             if (reviewMode && getReviewPly() === i + 1) {
                 tdWhite.classList.add('active');
@@ -1966,11 +2007,12 @@ function updateMoveHistory() {
 
         // Black move cell
         const tdBlack = document.createElement('td');
-        tdBlack.textContent = blackMove ? blackMove.san : '';
+        tdBlack.textContent = '';
         if (blackMove) {
             tdBlack.className = 'move-history-move';
             tdBlack.dataset.ply = String(i + 2);
             tdBlack.title = 'Jump to this position';
+            addMoveText(tdBlack, blackMove, i + 2);
             tdBlack.addEventListener('click', () => enterReviewAtPly(i + 2));
             if (reviewMode && getReviewPly() === i + 2) {
                 tdBlack.classList.add('active');

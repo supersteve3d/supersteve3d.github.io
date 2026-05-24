@@ -682,10 +682,24 @@ h1, h2, h3, .logo-area {
 }
 
 .saved-game-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
     color: var(--text-main);
     font-size: 13px;
     font-weight: 800;
     overflow-wrap: anywhere;
+}
+
+.saved-game-note-dot,
+.move-note-dot {
+    width: 8px;
+    height: 8px;
+    display: inline-block;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: #ffe500;
+    box-shadow: 0 0 0 2px rgba(255, 229, 0, 0.18), 0 0 10px rgba(255, 229, 0, 0.45);
 }
 
 .saved-game-meta {
@@ -923,6 +937,17 @@ h1, h2, h3, .logo-area {
     border-radius: 8px;
     cursor: pointer;
     transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.move-history-move span:first-child {
+    vertical-align: middle;
+}
+
+.move-note-dot {
+    width: 7px;
+    height: 7px;
+    margin-left: 5px;
+    vertical-align: middle;
 }
 
 .move-history-move:hover {
