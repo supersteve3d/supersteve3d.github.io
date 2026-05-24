@@ -12,7 +12,7 @@ const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const SUPABASE_LIVE_TABLE = 'browser_chess_live_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
 const HEAD_TO_HEAD_PLAYERS = ['Mum', 'David'];
-const APP_VERSION = '6.0';
+const APP_VERSION = '6.1';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
@@ -50,6 +50,9 @@ let gameOverOverlayDismissed = false;
 let savedGames = [];
 let currentGameSaved = false;
 let currentLoadedGameId = null;
+let annotationSaveTimer = null;
+let annotationSaveInFlight = false;
+let annotationSaveQueued = false;
 let liveGame = null;
 let liveSyncTimer = null;
 let liveSyncInFlight = false;
@@ -552,7 +555,7 @@ async function saveCompletedGame() {
         renderSavedGames();
         setSaveStatus(
             result.needsAnnotationColumn
-                ? 'Game saved without arrows. Paste the v6.0 Supabase SQL to save analysis marks.'
+                ? 'Game saved without arrows. Paste the v6.1 Supabase SQL to save analysis marks.'
                 : 'Game saved.',
             result.needsAnnotationColumn ? 'error' : 'success'
         );
@@ -1004,8 +1007,7 @@ function getLiveGameResultRows(row) {
         pgn: row.pgn || game.pgn(),
         game_mode: 'online',
         ai_difficulty: null,
-        half_moves: halfMoves,
-        annotations: serializeAnnotationStore()
+        half_moves: halfMoves
     };
 
     if (row.result === 'draw') {
@@ -1057,7 +1059,7 @@ async function archiveCompletedLiveGame(row) {
         renderSavedGames();
         setSaveStatus(
             result.needsAnnotationColumn
-                ? 'Head-to-head game saved without arrows. Paste the v6.0 Supabase SQL to save analysis marks.'
+                ? 'Head-to-head game saved without arrows. Paste the v6.1 Supabase SQL to save analysis marks.'
                 : 'Head-to-head game saved.',
             result.needsAnnotationColumn ? 'error' : 'success'
         );
@@ -1199,6 +1201,7 @@ function saveCurrentBoardAnnotations() {
     const key = String(getAnnotationPly());
     if (boardArrows.length === 0 && boardCircles.length === 0) {
         delete annotationStore[key];
+        scheduleSavedGameAnnotationUpdate();
         return;
     }
 
@@ -1206,6 +1209,55 @@ function saveCurrentBoardAnnotations() {
         arrows: boardArrows.map(arrow => ({ from: arrow.from, to: arrow.to })),
         circles: boardCircles.map(circle => ({ from: circle.from }))
     };
+    scheduleSavedGameAnnotationUpdate();
+}
+
+function scheduleSavedGameAnnotationUpdate() {
+    if (!currentLoadedGameId || gameMode === 'online') return;
+    if (annotationSaveTimer) {
+        window.clearTimeout(annotationSaveTimer);
+    }
+    annotationSaveTimer = window.setTimeout(saveLoadedGameAnnotations, 650);
+}
+
+async function saveLoadedGameAnnotations() {
+    if (!currentLoadedGameId || gameMode === 'online') return;
+    annotationSaveTimer = null;
+
+    if (annotationSaveInFlight) {
+        annotationSaveQueued = true;
+        return;
+    }
+
+    annotationSaveInFlight = true;
+    const annotations = normalizeAnnotationStore(annotationStore);
+
+    try {
+        const rows = await supabaseRequest(`${SUPABASE_GAMES_TABLE}?id=eq.${encodeURIComponent(currentLoadedGameId)}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                Prefer: 'return=representation'
+            },
+            body: JSON.stringify({ annotations })
+        });
+
+        savedGames = savedGames.map(savedGame =>
+            savedGame.id === currentLoadedGameId ? { ...savedGame, annotations } : savedGame
+        );
+        if (rows && rows.length) {
+            setSaveStatus('Analysis marks saved.', 'success');
+        }
+    } catch (error) {
+        console.error('Could not update saved game annotations:', error);
+        setSaveStatus('Could not save analysis marks. Paste the v6.1 Supabase SQL if needed.', 'error');
+    } finally {
+        annotationSaveInFlight = false;
+        if (annotationSaveQueued) {
+            annotationSaveQueued = false;
+            scheduleSavedGameAnnotationUpdate();
+        }
+    }
 }
 
 function loadBoardAnnotationsForPly(ply = getAnnotationPly()) {
@@ -2263,6 +2315,10 @@ document.getElementById('game-mode').addEventListener('change', (e) => {
     } else {
         stopLiveSync();
     }
+    if (annotationSaveTimer) {
+        window.clearTimeout(annotationSaveTimer);
+        annotationSaveTimer = null;
+    }
     gameMode = e.target.value;
     const aiGroup = document.getElementById('ai-difficulty-group');
     const colorGroup = document.getElementById('player-color-group');
@@ -2369,6 +2425,10 @@ function restartGame(skipLiveLeave = false) {
     loadBoardAnnotationsForPly();
     currentGameSaved = false;
     currentLoadedGameId = null;
+    if (annotationSaveTimer) {
+        window.clearTimeout(annotationSaveTimer);
+        annotationSaveTimer = null;
+    }
     gameOverOverlayDismissed = false;
     document.getElementById('game-over-overlay').classList.add('hidden');
     updateUI();
