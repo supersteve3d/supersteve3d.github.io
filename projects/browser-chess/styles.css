@@ -320,8 +320,18 @@ h1, h2, h3, .logo-area {
 }
 
 /* Form Controls */
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
 .form-group {
     margin-bottom: 16px;
+}
+
+.settings-grid .form-group {
+    margin-bottom: 0;
 }
 
 .form-group label {
@@ -363,8 +373,9 @@ h1, h2, h3, .logo-area {
     border: 1px solid var(--panel-border);
     border-radius: 12px;
     color: var(--text-main);
-    padding: 12px;
-    font-size: 14px;
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 13px;
     font-weight: 700;
     outline: none;
     text-transform: uppercase;
@@ -1622,6 +1633,18 @@ h1, h2, h3, .logo-area {
     .panel {
         padding: 16px;
         gap: 16px;
+    }
+    .settings-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+    .form-group label {
+        font-size: 12px;
+    }
+    .select-control {
+        min-height: 42px;
+        padding: 9px 10px;
+        font-size: 12px;
     }
     .online-room-actions {
         grid-template-columns: 1fr;

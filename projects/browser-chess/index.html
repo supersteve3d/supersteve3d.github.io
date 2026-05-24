@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Steve's Vibe Chess v5.4</title>
+    <title>Steve's Vibe Chess v5.5</title>
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,7 +47,7 @@
                 <span class="logo-icon">👑</span>
                 <div class="title-stack">
                     <h1>Steve's <span>Vibe Chess</span></h1>
-                    <span class="version-badge" id="version-badge">v5.4</span>
+                    <span class="version-badge" id="version-badge">v5.5</span>
                 </div>
             </div>
             <div class="header-actions">
@@ -97,47 +97,48 @@
                 <div class="panel-section">
                     <h2>Game Settings</h2>
 
-                    <div class="form-group">
-                        <label for="player-name">Player</label>
-                        <select id="player-name" class="select-control">
-                            <option value="Mum">Mum</option>
-                            <option value="David">David</option>
-                            <option value="Anonymous" selected>Anonymous</option>
-                        </select>
-                    </div>
+                    <div class="settings-grid">
+                        <div class="form-group">
+                            <label for="player-name">Player</label>
+                            <select id="player-name" class="select-control">
+                                <option value="Mum">Mum</option>
+                                <option value="David">David</option>
+                                <option value="Anonymous" selected>Anonymous</option>
+                            </select>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="game-mode">Opponent</label>
-                        <select id="game-mode" class="select-control">
-                            <option value="ai">Vs. Computer (AI)</option>
-                            <option value="local">Vs. Local Player</option>
-                            <option value="online">Online Mum vs David</option>
-                        </select>
-                    </div>
+                        <div class="form-group">
+                            <label for="game-mode">Opponent</label>
+                            <select id="game-mode" class="select-control">
+                                <option value="ai">Vs. Computer (AI)</option>
+                                <option value="local">Vs. Local Player</option>
+                                <option value="online">Online Mum vs David</option>
+                            </select>
+                        </div>
 
-                    <div class="form-group" id="ai-difficulty-group">
-                        <label for="ai-difficulty">AI Difficulty</label>
-                        <select id="ai-difficulty" class="select-control">
-                            <option value="easy">Easy (Novice)</option>
-                            <option value="medium" selected>Medium (Challenger)</option>
-                            <option value="hard">Hard (Master)</option>
-                        </select>
-                    </div>
+                        <div class="form-group" id="ai-difficulty-group">
+                            <label for="ai-difficulty">AI Difficulty</label>
+                            <select id="ai-difficulty" class="select-control">
+                                <option value="easy">Easy (Novice)</option>
+                                <option value="medium" selected>Medium (Challenger)</option>
+                                <option value="hard">Hard (Master)</option>
+                            </select>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="piece-theme">Chess Set</label>
-                        <select id="piece-theme" class="select-control">
-                            <option value="classic">Classic</option>
-                            <option value="vibe" selected>Vibe Kids</option>
-                        </select>
-                    </div>
+                        <div class="form-group">
+                            <label for="piece-theme">Chess Set</label>
+                            <select id="piece-theme" class="select-control">
+                                <option value="classic" selected>Classic</option>
+                            </select>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="fun-effects">Capture Effects</label>
-                        <select id="fun-effects" class="select-control">
-                            <option value="on" selected>Fun</option>
-                            <option value="off">Quiet</option>
-                        </select>
+                        <div class="form-group">
+                            <label for="fun-effects">Capture Effects</label>
+                            <select id="fun-effects" class="select-control">
+                                <option value="on" selected>Fun</option>
+                                <option value="off">Quiet</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="online-room-panel hidden" id="online-room-panel">
@@ -323,6 +324,13 @@
                 </button>
             </div>
             <div class="changelog-list">
+                <article class="changelog-item">
+                    <span class="changelog-version">v5.5</span>
+                    <div>
+                        <h3>Compact classic settings</h3>
+                        <p>Made Classic the default chess set, kept fun captures on, and tightened game settings into shorter rows.</p>
+                    </div>
+                </article>
                 <article class="changelog-item">
                     <span class="changelog-version">v5.4</span>
                     <div>
