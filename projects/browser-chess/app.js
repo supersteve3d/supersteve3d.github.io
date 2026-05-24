@@ -12,7 +12,7 @@ const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const SUPABASE_LIVE_TABLE = 'browser_chess_live_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
 const HEAD_TO_HEAD_PLAYERS = ['Mum', 'David'];
-const APP_VERSION = '6.3';
+const APP_VERSION = '6.4';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
@@ -592,6 +592,13 @@ function updatePlayerLabels() {
     }
 }
 
+function inferSavedGamePlayerColor(savedGame) {
+    if (savedGame.game_mode !== 'ai') return 'w';
+    const opponent = (savedGame.opponent || '').toLowerCase();
+    if (opponent.includes('white')) return 'b';
+    return 'w';
+}
+
 function renderScoreboard() {
     const scoreboard = document.getElementById('scoreboard');
     const totals = PLAYER_NAMES.reduce((acc, player) => {
@@ -727,6 +734,25 @@ function loadSavedGame(savedGame) {
 
     currentPlayer = savedGame.player;
     document.getElementById('player-name').value = currentPlayer;
+    gameMode = savedGame.game_mode || 'ai';
+    document.getElementById('game-mode').value = gameMode;
+    if (gameMode === 'ai') {
+        aiDifficulty = savedGame.ai_difficulty || 'medium';
+        playerColor = inferSavedGamePlayerColor(savedGame);
+        boardFlipped = playerColor === 'b';
+        document.getElementById('ai-difficulty').value = aiDifficulty;
+        document.getElementById('player-color').value = playerColor;
+        document.getElementById('ai-difficulty-group').classList.remove('hidden');
+        document.getElementById('player-color-group').classList.remove('hidden');
+        document.getElementById('online-role-group').classList.add('hidden');
+    } else {
+        playerColor = 'w';
+        boardFlipped = false;
+        document.getElementById('ai-difficulty-group').classList.add('hidden');
+        document.getElementById('player-color-group').classList.add('hidden');
+        document.getElementById('online-role-group').classList.add('hidden');
+    }
+    updatePlayerLabels();
     currentLoadedGameId = savedGame.id || savedGame.created_at || null;
     currentLoadedGameKey = savedGame.id ? 'id' : 'created_at';
     currentGameSaved = true;
@@ -1619,6 +1645,17 @@ function renderBoard() {
     renderAnnotationLayer(boardElement);
 }
 
+function updatePlayerCardOrder() {
+    const whiteCard = document.getElementById('player-white-card');
+    const blackCard = document.getElementById('player-black-card');
+    const boardWrapper = document.querySelector('.board-wrapper');
+    if (!whiteCard || !blackCard || !boardWrapper) return;
+
+    blackCard.style.order = boardFlipped ? '3' : '1';
+    boardWrapper.style.order = '2';
+    whiteCard.style.order = boardFlipped ? '1' : '3';
+}
+
 function getLivePlyCount() {
     return game.history().length;
 }
@@ -1672,11 +1709,18 @@ function stepReview(delta) {
     enterReviewAtPly(getReviewPly() + delta);
 }
 
+function jumpReviewToStart() {
+    if (getLivePlyCount() === 0) return;
+    enterReviewAtPly(0);
+}
+
 function updateReviewControls() {
+    const startButton = document.getElementById('btn-review-start');
     const prevButton = document.getElementById('btn-review-prev');
     const nextButton = document.getElementById('btn-review-next');
     const livePly = getLivePlyCount();
     const reviewPlyValue = getReviewPly();
+    startButton.disabled = livePly === 0 || reviewPlyValue <= 0;
     prevButton.disabled = livePly === 0 || reviewPlyValue <= 0;
     nextButton.disabled = livePly === 0 || reviewPlyValue >= livePly;
 }
@@ -1862,6 +1906,7 @@ function executeMove(from, to, promotion = null) {
 // Update game logs, captured pieces count, player indicator panels
 function updateUI() {
     renderBoard();
+    updatePlayerCardOrder();
     updateMoveHistory();
     updateCapturedPieces();
     updateGameStatus();
@@ -2460,6 +2505,7 @@ document.getElementById('btn-sound').addEventListener('click', () => {
 document.getElementById('btn-flip').addEventListener('click', () => {
     boardFlipped = !boardFlipped;
     renderBoard();
+    updatePlayerCardOrder();
 });
 
 // Restart Game
@@ -2492,6 +2538,7 @@ function restartGame(skipLiveLeave = false) {
 document.getElementById('btn-restart').addEventListener('click', restartGame);
 document.getElementById('btn-overlay-restart').addEventListener('click', restartGame);
 document.getElementById('btn-overlay-review').addEventListener('click', reviewFinishedGame);
+document.getElementById('btn-review-start').addEventListener('click', jumpReviewToStart);
 document.getElementById('btn-review-prev').addEventListener('click', () => stepReview(-1));
 document.getElementById('btn-review-next').addEventListener('click', () => stepReview(1));
 
@@ -2598,6 +2645,9 @@ document.addEventListener('keydown', (e) => {
     } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         stepReview(1);
+    } else if (e.key === 'Home') {
+        e.preventDefault();
+        jumpReviewToStart();
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
         if (boardArrows.length > 0 || boardCircles.length > 0 || annotationTapFrom) {
             e.preventDefault();
