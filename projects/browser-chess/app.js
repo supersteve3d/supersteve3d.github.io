@@ -12,7 +12,7 @@ const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const SUPABASE_LIVE_TABLE = 'browser_chess_live_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
 const HEAD_TO_HEAD_PLAYERS = ['Mum', 'David'];
-const APP_VERSION = '5.9';
+const APP_VERSION = '6.0';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
@@ -36,6 +36,7 @@ let annotationDrag = null;
 let annotationDraft = null;
 let annotationTapFrom = null;
 let suppressAnnotationClick = false;
+let annotationStore = {};
 const boardArrows = [];
 const boardCircles = [];
 let currentPlayer = 'Anonymous';
@@ -452,6 +453,7 @@ function buildSavedGamePayload(overrides = {}) {
         game_mode: gameMode,
         ai_difficulty: gameMode === 'ai' ? aiDifficulty : null,
         half_moves: history.length,
+        annotations: serializeAnnotationStore(),
         ...overrides
     };
 }
@@ -482,6 +484,53 @@ async function fetchSavedGames() {
     }
 }
 
+async function insertSavedGameRows(rows) {
+    const payload = Array.isArray(rows) ? rows : [rows];
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_GAMES_TABLE}`, {
+        method: 'POST',
+        headers: getSupabaseHeaders({
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation'
+        }),
+        body: JSON.stringify(payload)
+    });
+
+    if (response.ok) {
+        return {
+            rows: await response.json(),
+            annotationsSaved: payload.some(row => row.annotations && Object.keys(row.annotations).length > 0)
+        };
+    }
+
+    const errorText = await response.text();
+    if (!errorText.toLowerCase().includes('annotations')) {
+        throw new Error(`Supabase returned ${response.status}: ${errorText}`);
+    }
+
+    const fallbackPayload = payload.map(row => {
+        const { annotations, ...rest } = row;
+        return rest;
+    });
+    const fallbackResponse = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_GAMES_TABLE}`, {
+        method: 'POST',
+        headers: getSupabaseHeaders({
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation'
+        }),
+        body: JSON.stringify(fallbackPayload)
+    });
+
+    if (!fallbackResponse.ok) {
+        throw new Error(`Supabase returned ${fallbackResponse.status}: ${await fallbackResponse.text()}`);
+    }
+
+    return {
+        rows: await fallbackResponse.json(),
+        annotationsSaved: false,
+        needsAnnotationColumn: true
+    };
+}
+
 async function saveCompletedGame() {
     if (gameMode === 'online') return;
     if (currentGameSaved || currentLoadedGameId || !game.game_over()) return;
@@ -496,25 +545,17 @@ async function saveCompletedGame() {
     setSaveStatus('Saving completed game...');
 
     try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_GAMES_TABLE}`, {
-            method: 'POST',
-            headers: getSupabaseHeaders({
-                'Content-Type': 'application/json',
-                Prefer: 'return=representation'
-            }),
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            currentGameSaved = false;
-            throw new Error(`Supabase returned ${response.status}`);
-        }
-
-        const createdRows = await response.json();
+        const result = await insertSavedGameRows(payload);
+        const createdRows = result.rows;
         savedGames = [...createdRows, ...savedGames];
         renderScoreboard();
         renderSavedGames();
-        setSaveStatus('Game saved.', 'success');
+        setSaveStatus(
+            result.needsAnnotationColumn
+                ? 'Game saved without arrows. Paste the v6.0 Supabase SQL to save analysis marks.'
+                : 'Game saved.',
+            result.needsAnnotationColumn ? 'error' : 'success'
+        );
     } catch (error) {
         console.error('Could not save game:', error);
         setSaveStatus('Game not saved. Check the Supabase table and policies.', 'error');
@@ -674,6 +715,8 @@ function loadSavedGame(savedGame) {
     currentLoadedGameId = savedGame.id;
     currentGameSaved = true;
     reviewPly = null;
+    annotationStore = normalizeAnnotationStore(savedGame.annotations);
+    loadBoardAnnotationsForPly();
     selectedSquare = null;
     validMoves = [];
     gameOverOverlayDismissed = true;
@@ -961,7 +1004,8 @@ function getLiveGameResultRows(row) {
         pgn: row.pgn || game.pgn(),
         game_mode: 'online',
         ai_difficulty: null,
-        half_moves: halfMoves
+        half_moves: halfMoves,
+        annotations: serializeAnnotationStore()
     };
 
     if (row.result === 'draw') {
@@ -1005,20 +1049,18 @@ async function archiveCompletedLiveGame(row) {
         );
         if (!claimed || claimed.length === 0) return;
 
-        const resultRows = getLiveGameResultRows(row);
-        const createdRows = await supabaseRequest(SUPABASE_GAMES_TABLE, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Prefer: 'return=representation'
-            },
-            body: JSON.stringify(resultRows)
-        });
+        const result = await insertSavedGameRows(getLiveGameResultRows(row));
+        const createdRows = result.rows;
         savedGames = [...createdRows, ...savedGames];
         currentGameSaved = true;
         renderScoreboard();
         renderSavedGames();
-        setSaveStatus('Head-to-head game saved.', 'success');
+        setSaveStatus(
+            result.needsAnnotationColumn
+                ? 'Head-to-head game saved without arrows. Paste the v6.0 Supabase SQL to save analysis marks.'
+                : 'Head-to-head game saved.',
+            result.needsAnnotationColumn ? 'error' : 'success'
+        );
     } catch (error) {
         console.error('Could not archive live game:', error);
         setSaveStatus('Live game finished but was not archived. Check Supabase policies.', 'error');
@@ -1098,6 +1140,7 @@ function toggleBoardCircle(square) {
     } else {
         boardCircles.push({ from: square });
     }
+    saveCurrentBoardAnnotations();
 }
 
 function toggleBoardArrow(from, to) {
@@ -1107,6 +1150,7 @@ function toggleBoardArrow(from, to) {
     } else {
         boardArrows.push({ from, to });
     }
+    saveCurrentBoardAnnotations();
 }
 
 function clearBoardAnnotations() {
@@ -1115,7 +1159,64 @@ function clearBoardAnnotations() {
     annotationDraft = null;
     annotationDrag = null;
     annotationTapFrom = null;
+    saveCurrentBoardAnnotations();
     renderBoard();
+}
+
+function getAnnotationPly() {
+    return getReviewPly();
+}
+
+function normalizeAnnotationList(list, hasTarget = false) {
+    if (!Array.isArray(list)) return [];
+    return list
+        .filter(item => item && typeof item.from === 'string' && (!hasTarget || typeof item.to === 'string'))
+        .map(item => hasTarget ? { from: item.from, to: item.to } : { from: item.from });
+}
+
+function normalizeAnnotationStore(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+    return Object.entries(value).reduce((acc, [ply, annotations]) => {
+        const numericPly = Number(ply);
+        if (!Number.isInteger(numericPly) || numericPly < 0) return acc;
+        if (!annotations || typeof annotations !== 'object') return acc;
+        const arrows = normalizeAnnotationList(annotations.arrows, true);
+        const circles = normalizeAnnotationList(annotations.circles, false);
+        if (arrows.length || circles.length) {
+            acc[String(numericPly)] = { arrows, circles };
+        }
+        return acc;
+    }, {});
+}
+
+function serializeAnnotationStore() {
+    saveCurrentBoardAnnotations();
+    return normalizeAnnotationStore(annotationStore);
+}
+
+function saveCurrentBoardAnnotations() {
+    const key = String(getAnnotationPly());
+    if (boardArrows.length === 0 && boardCircles.length === 0) {
+        delete annotationStore[key];
+        return;
+    }
+
+    annotationStore[key] = {
+        arrows: boardArrows.map(arrow => ({ from: arrow.from, to: arrow.to })),
+        circles: boardCircles.map(circle => ({ from: circle.from }))
+    };
+}
+
+function loadBoardAnnotationsForPly(ply = getAnnotationPly()) {
+    const annotations = annotationStore[String(ply)] || { arrows: [], circles: [] };
+    boardArrows.length = 0;
+    boardCircles.length = 0;
+    boardArrows.push(...normalizeAnnotationList(annotations.arrows, true));
+    boardCircles.push(...normalizeAnnotationList(annotations.circles, false));
+    annotationDraft = null;
+    annotationDrag = null;
+    annotationTapFrom = null;
 }
 
 function updateAnnotationModeButton() {
@@ -1476,6 +1577,7 @@ function enterReviewAtPly(ply) {
 
     selectedSquare = null;
     validMoves = [];
+    loadBoardAnnotationsForPly();
     updateUI();
 }
 
@@ -1648,6 +1750,7 @@ function executeMove(from, to, promotion = null) {
     // Set last move variables for highlights
     lastMove = { from, to };
     reviewPly = null;
+    loadBoardAnnotationsForPly();
 
     // Clear selection
     selectedSquare = null;
@@ -2262,6 +2365,8 @@ function restartGame(skipLiveLeave = false) {
     validMoves = [];
     lastMove = null;
     reviewPly = null;
+    annotationStore = {};
+    loadBoardAnnotationsForPly();
     currentGameSaved = false;
     currentLoadedGameId = null;
     gameOverOverlayDismissed = false;
