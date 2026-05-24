@@ -12,7 +12,7 @@ const SUPABASE_GAMES_TABLE = 'browser_chess_games';
 const SUPABASE_LIVE_TABLE = 'browser_chess_live_games';
 const PLAYER_NAMES = ['Mum', 'David', 'Anonymous'];
 const HEAD_TO_HEAD_PLAYERS = ['Mum', 'David'];
-const APP_VERSION = '6.1';
+const APP_VERSION = '6.2';
 const DIFFICULTY_POINTS = {
     easy: 3,
     medium: 5,
@@ -50,6 +50,7 @@ let gameOverOverlayDismissed = false;
 let savedGames = [];
 let currentGameSaved = false;
 let currentLoadedGameId = null;
+let currentLoadedGameKey = 'id';
 let annotationSaveTimer = null;
 let annotationSaveInFlight = false;
 let annotationSaveQueued = false;
@@ -715,7 +716,8 @@ function loadSavedGame(savedGame) {
 
     currentPlayer = savedGame.player;
     document.getElementById('player-name').value = currentPlayer;
-    currentLoadedGameId = savedGame.id;
+    currentLoadedGameId = savedGame.id || savedGame.created_at || null;
+    currentLoadedGameKey = savedGame.id ? 'id' : 'created_at';
     currentGameSaved = true;
     reviewPly = null;
     annotationStore = normalizeAnnotationStore(savedGame.annotations);
@@ -1213,10 +1215,15 @@ function saveCurrentBoardAnnotations() {
 }
 
 function scheduleSavedGameAnnotationUpdate() {
-    if (!currentLoadedGameId || gameMode === 'online') return;
+    if (gameMode === 'online') return;
+    if (!currentLoadedGameId) {
+        setSaveStatus('Could not save marks because this saved game has no row id.', 'error');
+        return;
+    }
     if (annotationSaveTimer) {
         window.clearTimeout(annotationSaveTimer);
     }
+    setSaveStatus('Saving analysis marks...');
     annotationSaveTimer = window.setTimeout(saveLoadedGameAnnotations, 650);
 }
 
@@ -1233,7 +1240,7 @@ async function saveLoadedGameAnnotations() {
     const annotations = normalizeAnnotationStore(annotationStore);
 
     try {
-        const rows = await supabaseRequest(`${SUPABASE_GAMES_TABLE}?id=eq.${encodeURIComponent(currentLoadedGameId)}`, {
+        const rows = await supabaseRequest(`${SUPABASE_GAMES_TABLE}?${currentLoadedGameKey}=eq.${encodeURIComponent(currentLoadedGameId)}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -1243,10 +1250,12 @@ async function saveLoadedGameAnnotations() {
         });
 
         savedGames = savedGames.map(savedGame =>
-            savedGame.id === currentLoadedGameId ? { ...savedGame, annotations } : savedGame
+            (savedGame[currentLoadedGameKey] === currentLoadedGameId) ? { ...savedGame, annotations } : savedGame
         );
         if (rows && rows.length) {
             setSaveStatus('Analysis marks saved.', 'success');
+        } else {
+            setSaveStatus('Could not update analysis marks. Add the v6.2 Supabase update policy.', 'error');
         }
     } catch (error) {
         console.error('Could not update saved game annotations:', error);
@@ -2425,6 +2434,7 @@ function restartGame(skipLiveLeave = false) {
     loadBoardAnnotationsForPly();
     currentGameSaved = false;
     currentLoadedGameId = null;
+    currentLoadedGameKey = 'id';
     if (annotationSaveTimer) {
         window.clearTimeout(annotationSaveTimer);
         annotationSaveTimer = null;
