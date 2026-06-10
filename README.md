@@ -22,6 +22,14 @@ https://supersteve3d.github.io/
 - Type: browser game
 - Description: Playable chess app with local play, computer opponent mode, AI difficulty settings, move history, captured-piece display, board flipping, sound controls, and PGN export.
 
+### Codenames Tablet
+
+- Live page: https://supersteve3d.github.io/projects/codenames/
+- Folder: `projects/codenames/`
+- Thumbnail: `assets/thumbnails/codenames.svg`
+- Type: party game
+- Description: Tablet-first Codenames with a public 5x5 word board, press-and-hold spymaster key overlay, clue log, turn tracker, and undoable reveals.
+
 ## Site Structure
 
 - `index.html` is the main gallery page.
