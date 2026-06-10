@@ -52,7 +52,7 @@ const WORD_PACKS = {
 const STORAGE_KEY = "codenames-tablet-state-v3";
 const PREVIOUS_STORAGE_KEY = "codenames-tablet-state-v2";
 const LEGACY_STORAGE_KEY = "codenames-tablet-state-v1";
-const APP_VERSION = "1.3";
+const APP_VERSION = "1.4";
 
 const state = {
     words: [],

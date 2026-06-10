@@ -65,46 +65,48 @@
                 <section class="panel">
                     <div class="panel-heading">
                         <h2>Round Controls</h2>
-                        <p>Everything needed for a round, with no extra screens.</p>
+                        <p>Everything needed for a round, compacted for tablet, desktop, and phone.</p>
                     </div>
 
-                    <div class="pack-grid">
-                        <label class="field">
-                            <span>Word Pack</span>
-                            <select id="word-pack-select">
-                                <option value="classic">Classic Mix</option>
-                                <option value="family">Family Night</option>
-                                <option value="cinematic">Big Adventure</option>
-                                <option value="custom">Custom List</option>
-                            </select>
+                    <div class="control-grid">
+                        <div class="pack-grid">
+                            <label class="field">
+                                <span>Word Pack</span>
+                                <select id="word-pack-select">
+                                    <option value="classic">Classic Mix</option>
+                                    <option value="family">Family Night</option>
+                                    <option value="cinematic">Big Adventure</option>
+                                    <option value="custom">Custom List</option>
+                                </select>
+                            </label>
+                        </div>
+
+                        <label id="custom-pack-field" class="field textarea-field control-custom" hidden>
+                            <span>Custom Words</span>
+                            <textarea id="custom-pack-input" rows="6" placeholder="Enter at least 25 unique words, separated by commas or new lines."></textarea>
                         </label>
-                    </div>
 
-                    <label id="custom-pack-field" class="field textarea-field" hidden>
-                        <span>Custom Words</span>
-                        <textarea id="custom-pack-input" rows="6" placeholder="Enter at least 25 unique words, separated by commas or new lines."></textarea>
-                    </label>
+                        <div class="clue-grid">
+                            <label class="field">
+                                <span>Clue</span>
+                                <input id="clue-input" type="text" maxlength="24" placeholder="ocean">
+                            </label>
+                            <label class="field field-small">
+                                <span>Number</span>
+                                <input id="clue-count-input" type="number" min="1" max="9" value="1">
+                            </label>
+                        </div>
 
-                    <div class="clue-grid">
-                        <label class="field">
-                            <span>Clue</span>
-                            <input id="clue-input" type="text" maxlength="24" placeholder="ocean">
-                        </label>
-                        <label class="field field-small">
-                            <span>Number</span>
-                            <input id="clue-count-input" type="number" min="1" max="9" value="1">
-                        </label>
-                    </div>
+                        <div class="button-stack">
+                            <button id="confirm-guess-button" class="primary-button" type="button" disabled>Reveal Selected Guess</button>
+                        </div>
 
-                    <div class="button-stack">
-                        <button id="confirm-guess-button" class="primary-button" type="button" disabled>Reveal Selected Guess</button>
-                    </div>
-
-                    <div class="peek-panel">
-                        <button id="peek-button" class="peek-button" type="button" aria-pressed="false">
-                            Secret Key Toggle
-                        </button>
-                        <p class="peek-help">Tap once to show the spymaster colors on the main board. Tap again to hide them.</p>
+                        <div class="peek-panel">
+                            <button id="peek-button" class="peek-button" type="button" aria-pressed="false">
+                                Secret Key Toggle
+                            </button>
+                            <p class="peek-help">Tap once to show the spymaster colors on the main board. Tap again to hide them.</p>
+                        </div>
                     </div>
                 </section>
 
@@ -150,6 +152,13 @@
                 <button id="btn-changelog-close" class="floating-close" type="button" aria-label="Close changelog">&times;</button>
             </div>
             <div class="changelog-list">
+                <article class="changelog-item">
+                    <span class="changelog-version">v1.4</span>
+                    <div>
+                        <h3>Responsive rescue pass</h3>
+                        <p>Reworked the layout so controls reflow instead of clipping, bringing back usable behavior across desktop, tablet, and phone screens.</p>
+                    </div>
+                </article>
                 <article class="changelog-item">
                     <span class="changelog-version">v1.3</span>
                     <div>
