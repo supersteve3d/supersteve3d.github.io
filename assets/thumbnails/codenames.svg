@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Codenames thumbnail</title>
+  <desc id="desc">A stylized 5 by 5 word grid with red and blue secret key accents.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#203744"/>
+      <stop offset="60%" stop-color="#11181c"/>
+      <stop offset="100%" stop-color="#182127"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f3e6c8"/>
+      <stop offset="100%" stop-color="#e1cfa7"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="56" fill="url(#bg)"/>
+  <circle cx="180" cy="170" r="160" fill="#cf5648" opacity="0.22"/>
+  <circle cx="842" cy="860" r="180" fill="#406fb9" opacity="0.24"/>
+  <g transform="translate(120 84)">
+    <text x="0" y="0" fill="#f5f1e7" font-family="Georgia, serif" font-size="92" font-weight="700">Codenames</text>
+    <text x="0" y="68" fill="#f0c56c" font-family="Trebuchet MS, sans-serif" font-size="30" font-weight="700" letter-spacing="5">TABLET EDITION</text>
+  </g>
+  <g transform="translate(128 240)">
+    <rect x="0" y="0" width="768" height="640" rx="42" fill="#0f171b" stroke="rgba(255,255,255,0.12)"/>
+    <g transform="translate(28 28)">
+      <g fill="url(#card)">
+        <rect x="0" y="0" width="128" height="104" rx="22"/>
+        <rect x="144" y="0" width="128" height="104" rx="22"/>
+        <rect x="288" y="0" width="128" height="104" rx="22"/>
+        <rect x="432" y="0" width="128" height="104" rx="22"/>
+        <rect x="576" y="0" width="128" height="104" rx="22"/>
+        <rect x="0" y="120" width="128" height="104" rx="22"/>
+        <rect x="144" y="120" width="128" height="104" rx="22"/>
+        <rect x="288" y="120" width="128" height="104" rx="22"/>
+        <rect x="432" y="120" width="128" height="104" rx="22"/>
+        <rect x="576" y="120" width="128" height="104" rx="22"/>
+        <rect x="0" y="240" width="128" height="104" rx="22"/>
+        <rect x="144" y="240" width="128" height="104" rx="22"/>
+        <rect x="288" y="240" width="128" height="104" rx="22"/>
+        <rect x="432" y="240" width="128" height="104" rx="22"/>
+        <rect x="576" y="240" width="128" height="104" rx="22"/>
+        <rect x="0" y="360" width="128" height="104" rx="22"/>
+        <rect x="144" y="360" width="128" height="104" rx="22"/>
+        <rect x="288" y="360" width="128" height="104" rx="22"/>
+        <rect x="432" y="360" width="128" height="104" rx="22"/>
+        <rect x="576" y="360" width="128" height="104" rx="22"/>
+        <rect x="0" y="480" width="128" height="104" rx="22"/>
+        <rect x="144" y="480" width="128" height="104" rx="22"/>
+        <rect x="288" y="480" width="128" height="104" rx="22"/>
+        <rect x="432" y="480" width="128" height="104" rx="22"/>
+        <rect x="576" y="480" width="128" height="104" rx="22"/>
+      </g>
+      <g font-family="Trebuchet MS, sans-serif" font-size="26" font-weight="800" fill="#3a2a18">
+        <text x="27" y="58">OCEAN</text>
+        <text x="173" y="58">LASER</text>
+        <text x="316" y="58">QUEEN</text>
+        <text x="463" y="58">LIGHT</text>
+        <text x="609" y="58">SHARK</text>
+        <text x="26" y="178">MARCH</text>
+        <text x="176" y="178">PILOT</text>
+        <text x="322" y="178">KNIGHT</text>
+        <text x="472" y="178">FENCE</text>
+        <text x="616" y="178">DRILL</text>
+        <text x="27" y="298">CLOUD</text>
+        <text x="178" y="298">RABBIT</text>
+        <text x="323" y="298">TORCH</text>
+        <text x="467" y="298">GHOST</text>
+        <text x="613" y="298">YARD</text>
+        <text x="28" y="418">GLASS</text>
+        <text x="175" y="418">JUPITER</text>
+        <text x="326" y="418">WEB</text>
+        <text x="474" y="418">PORT</text>
+        <text x="609" y="418">WITCH</text>
+        <text x="27" y="538">MOUSE</text>
+        <text x="176" y="538">SPOT</text>
+        <text x="321" y="538">BEAR</text>
+        <text x="466" y="538">WAVE</text>
+        <text x="613" y="538">TRAIN</text>
+      </g>
+      <g opacity="0.9">
+        <rect x="452" y="0" width="128" height="104" rx="22" fill="#cf5648" opacity="0.86"/>
+        <rect x="144" y="120" width="128" height="104" rx="22" fill="#406fb9" opacity="0.86"/>
+        <rect x="576" y="360" width="128" height="104" rx="22" fill="#406fb9" opacity="0.86"/>
+        <rect x="288" y="480" width="128" height="104" rx="22" fill="#161616" opacity="0.95"/>
+      </g>
+    </g>
+  </g>
+</svg>
