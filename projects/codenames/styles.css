@@ -249,6 +249,13 @@ body.turn-blue {
     gap: 0.8rem;
 }
 
+.count-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 7rem) minmax(0, 1fr);
+    gap: 0.8rem;
+    align-items: end;
+}
+
 .panel-heading h2,
 .board-header h2 {
     margin: 0 0 0.25rem;
@@ -258,13 +265,6 @@ body.turn-blue {
 .panel-heading p,
 .board-header p {
     margin: 0;
-}
-
-.clue-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 6rem;
-    gap: 0.8rem;
-    margin: 0.8rem 0;
 }
 
 .field {
@@ -307,15 +307,17 @@ body.turn-blue {
     line-height: 1.45;
 }
 
+.control-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
 .field select:focus,
 .field textarea:focus {
     outline: 2px solid rgba(241, 197, 107, 0.45);
     outline-offset: 2px;
-}
-
-.pack-grid {
-    display: grid;
-    margin-top: 0.8rem;
 }
 
 .textarea-field {
@@ -761,24 +763,14 @@ button:disabled {
     }
 
     .control-grid {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
-        align-items: end;
-    }
-
-    .control-custom {
-        grid-column: 1 / -1;
-    }
-
-    .pack-grid,
-    .clue-grid,
-    .button-stack,
-    .peek-panel {
-        margin-top: 0;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr) minmax(0, 1fr);
+        align-items: start;
     }
 
     .peek-panel {
         border-top: 0;
         padding-top: 0;
+        margin-top: 0;
     }
 
     .peek-help {
@@ -875,7 +867,7 @@ button:disabled {
         font-size: 0.8rem;
     }
 
-    .clue-grid {
+    .count-grid {
         grid-template-columns: 1fr;
     }
 

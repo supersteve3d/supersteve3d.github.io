@@ -1,5 +1,4 @@
-const WORD_PACKS = {
-    classic: [
+const MASTER_WORDS = [
         "Angel", "Apollo", "Arm", "Ball", "Band", "Bank", "Battery", "Beach", "Bear", "Bell",
         "Berlin", "Block", "Bolt", "Boot", "Bottle", "Bridge", "Brush", "Buffalo", "Button", "Cap",
         "Card", "Carrot", "Cat", "Center", "Chair", "Chocolate", "Circle", "Cliff", "Club", "Code",
@@ -22,9 +21,7 @@ const WORD_PACKS = {
         "Staff", "Star", "Stick", "Storm", "Sub", "Suit", "Swing", "Table", "Temple", "Theater",
         "Thief", "Thread", "Time", "Tokyo", "Torch", "Tower", "Track", "Train", "Triangle", "Tube",
         "Turkey", "Undertaker", "Vacuum", "Van", "Vet", "Wake", "Wall", "Watch", "Water", "Wave",
-        "Web", "Well", "Whale", "Whip", "Wind", "Witch", "Wolf", "Wood", "Yard"
-    ],
-    family: [
+        "Web", "Well", "Whale", "Whip", "Wind", "Witch", "Wolf", "Wood", "Yard",
         "Apple", "Backyard", "Balloon", "Banana", "Barn", "Baseball", "Bed", "Bicycle", "Blanket", "Bread",
         "Bubble", "Burger", "Candle", "Candy", "Castle", "Cereal", "Chair", "Cheese", "Chicken", "Cookie",
         "Cousin", "Crayon", "Cupcake", "Dinosaur", "Dinner", "Dog", "Donut", "Dragon", "Drum", "Family",
@@ -34,9 +31,7 @@ const WORD_PACKS = {
         "Mountain", "Music", "Noodle", "Ocean", "Pajamas", "Pancake", "Parade", "Park", "Peanut", "Penguin",
         "Picnic", "Pirate", "Pizza", "Planet", "Pocket", "Popsicle", "Princess", "Pumpkin", "Puppy", "Rainbow",
         "Rocket", "School", "Seashell", "Ship", "Snowman", "Soccer", "Space", "Spider", "Spoon", "Star",
-        "Story", "Sunflower", "Swing", "Tiger", "Treasure", "Truck", "Tulip", "Turtle", "Vacation", "Volcano"
-    ],
-    cinematic: [
+        "Story", "Sunflower", "Swing", "Tiger", "Treasure", "Truck", "Tulip", "Turtle", "Vacation", "Volcano",
         "Afterburner", "Alien", "Arena", "Artifact", "Beacon", "Blizzard", "Blueprint", "Bounty", "Cannon", "Captain",
         "Cave", "Cipher", "Comet", "Compass", "Convoy", "Cosmos", "Crash", "Crown", "Danger", "Desert",
         "Echo", "Empire", "Escape", "Falcon", "Fate", "Galaxy", "Glacier", "Harpoon", "Horizon", "Hunter",
@@ -46,13 +41,13 @@ const WORD_PACKS = {
         "Shadow", "Signal", "Skylight", "Smoke", "Solar", "Starship", "Storm", "Summit", "Temple", "Thunder",
         "Titan", "Tracker", "Transit", "Tunnel", "Typhoon", "Vault", "Vector", "Voyage", "Warrior", "Whisper",
         "Wildfire", "Windfall", "Wreck", "Zephyr"
-    ]
-};
+    ];
 
-const STORAGE_KEY = "codenames-tablet-state-v3";
+const STORAGE_KEY = "codenames-tablet-state-v4";
+const PREVIOUS_STORAGE_KEY_V3 = "codenames-tablet-state-v3";
 const PREVIOUS_STORAGE_KEY = "codenames-tablet-state-v2";
 const LEGACY_STORAGE_KEY = "codenames-tablet-state-v1";
-const APP_VERSION = "1.4";
+const APP_VERSION = "1.5";
 
 const state = {
     words: [],
@@ -63,15 +58,13 @@ const state = {
     startingTeam: "red",
     redRemaining: 8,
     blueRemaining: 9,
-    currentClue: "",
-    clueCount: "1",
+    turnGuessLimit: 1,
+    guessesRemaining: 1,
     log: [],
     peekActive: false,
     winner: null,
     history: [],
-    score: { red: 0, blue: 0 },
-    wordPack: "classic",
-    customWords: ""
+    score: { red: 0, blue: 0 }
 };
 
 const elements = {
@@ -82,7 +75,6 @@ const elements = {
     blueRemaining: document.getElementById("blue-remaining"),
     selectedWord: document.getElementById("selected-word"),
     boardSubtitle: document.getElementById("board-subtitle"),
-    clueInput: document.getElementById("clue-input"),
     clueCountInput: document.getElementById("clue-count-input"),
     confirmGuessButton: document.getElementById("confirm-guess-button"),
     peekButton: document.getElementById("peek-button"),
@@ -97,9 +89,6 @@ const elements = {
     redScore: document.getElementById("red-score"),
     blueScore: document.getElementById("blue-score"),
     scoreNote: document.getElementById("score-note"),
-    wordPackSelect: document.getElementById("word-pack-select"),
-    customPackField: document.getElementById("custom-pack-field"),
-    customPackInput: document.getElementById("custom-pack-input"),
     statusTurnCard: document.querySelector(".status-turn"),
     boardPanel: document.querySelector(".board-panel")
 };
@@ -113,26 +102,8 @@ function shuffle(values) {
     return copy;
 }
 
-function parseCustomWords(text) {
-    return text
-        .split(/[\n,]+/)
-        .map((word) => word.trim())
-        .filter(Boolean)
-        .filter((word, index, words) => words.findIndex((entry) => entry.toLowerCase() === word.toLowerCase()) === index);
-}
-
-function getActiveWordPool() {
-    if (state.wordPack === "custom") {
-        const customWords = parseCustomWords(state.customWords);
-        if (customWords.length >= 25) {
-            return customWords;
-        }
-    }
-    return WORD_PACKS[state.wordPack] || WORD_PACKS.classic;
-}
-
 function sampleWords() {
-    return shuffle(getActiveWordPool()).slice(0, 25);
+    return shuffle(MASTER_WORDS).slice(0, 25);
 }
 
 function buildAssignments(startingTeam) {
@@ -166,11 +137,9 @@ function setTurnTheme() {
     elements.statusTurnCard.classList.toggle("turn-blue", state.currentTeam === "blue");
 }
 
-function updatePackControls() {
-    const isCustom = state.wordPack === "custom";
-    elements.wordPackSelect.value = state.wordPack;
-    elements.customPackField.hidden = !isCustom;
-    elements.customPackInput.value = state.customWords;
+function getTurnGuessLimitFromInput() {
+    const parsed = Number.parseInt(elements.clueCountInput.value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 9) : 1;
 }
 
 function createNewGame() {
@@ -185,14 +154,13 @@ function createNewGame() {
     state.startingTeam = startingTeam;
     state.redRemaining = assignments.filter((item) => item === "red").length;
     state.blueRemaining = assignments.filter((item) => item === "blue").length;
-    state.currentClue = "";
-    state.clueCount = "1";
-    state.log = [`<strong>${teamLabel(startingTeam)}</strong> starts the round. Add a clue and reveal a guess to hand play across.`];
+    state.turnGuessLimit = 1;
+    state.guessesRemaining = 1;
+    state.log = [`<strong>${teamLabel(startingTeam)}</strong> starts the round. Say a clue out loud, set the number, and reveal guesses on the board.`];
     state.peekActive = false;
     state.winner = null;
     state.history = [];
 
-    elements.clueInput.value = "";
     elements.clueCountInput.value = "1";
     render();
     saveState();
@@ -207,8 +175,8 @@ function cloneSnapshot() {
         blueRemaining: state.blueRemaining,
         log: [...state.log],
         winner: state.winner,
-        currentClue: state.currentClue,
-        clueCount: state.clueCount,
+        turnGuessLimit: state.turnGuessLimit,
+        guessesRemaining: state.guessesRemaining,
         peekActive: state.peekActive
     };
 }
@@ -221,8 +189,8 @@ function restoreSnapshot(snapshot) {
     state.blueRemaining = snapshot.blueRemaining;
     state.log = [...snapshot.log];
     state.winner = snapshot.winner;
-    state.currentClue = snapshot.currentClue;
-    state.clueCount = snapshot.clueCount;
+    state.turnGuessLimit = snapshot.turnGuessLimit ?? 1;
+    state.guessesRemaining = snapshot.guessesRemaining ?? state.turnGuessLimit;
     state.peekActive = snapshot.peekActive ?? false;
     render();
     saveState();
@@ -234,36 +202,24 @@ function selectTile(index) {
     render();
 }
 
-function applyClueFromInputs() {
-    const clue = elements.clueInput.value.trim();
-    const clueCount = elements.clueCountInput.value.trim();
-
-    if (!clue) {
-        state.log.unshift(`Add a clue for <strong>${teamLabel(state.currentTeam)}</strong> before revealing a guess.`);
-        renderLog();
+function beginTurnGuessBudget() {
+    const nextLimit = getTurnGuessLimitFromInput();
+    if (state.guessesRemaining !== state.turnGuessLimit) {
         return;
     }
 
-    const normalizedCount = clueCount || "1";
-    if (state.currentClue === clue && state.clueCount === normalizedCount) {
-        return true;
-    }
-
-    state.currentClue = clue;
-    state.clueCount = normalizedCount;
-    state.log.unshift(`<strong>${teamLabel(state.currentTeam)}</strong> clue: ${clue.toUpperCase()} ${state.clueCount}`);
-    return true;
+    state.turnGuessLimit = nextLimit;
+    state.guessesRemaining = nextLimit;
+    state.log.unshift(`<strong>${teamLabel(state.currentTeam)}</strong> gets ${nextLimit} guess${nextLimit === 1 ? "" : "es"} this turn.`);
 }
 
 function endTurn(reason) {
     const nextTeam = state.currentTeam === "red" ? "blue" : "red";
     state.selectedIndex = null;
-    state.currentClue = "";
-    state.clueCount = "1";
     state.currentTeam = nextTeam;
+    state.turnGuessLimit = getTurnGuessLimitFromInput();
+    state.guessesRemaining = state.turnGuessLimit;
     state.log.unshift(reason || `Turn passes to <strong>${teamLabel(nextTeam)}</strong>.`);
-    elements.clueInput.value = "";
-    elements.clueCountInput.value = "1";
     render();
     saveState();
 }
@@ -290,7 +246,7 @@ function closeChangelog() {
 
 function revealSelectedTile() {
     if (state.selectedIndex === null || state.winner) return;
-    if (!applyClueFromInputs()) return;
+    beginTurnGuessBudget();
 
     const index = state.selectedIndex;
     const type = state.assignments[index];
@@ -300,6 +256,7 @@ function revealSelectedTile() {
 
     const activeTeam = state.currentTeam;
     let message = `<strong>${teamLabel(activeTeam)}</strong> revealed ${word.toUpperCase()}: ${typeLabel(type)}.`;
+    const guessedOwnColor = type === activeTeam;
 
     if (type === "red") {
         state.redRemaining -= 1;
@@ -330,8 +287,22 @@ function revealSelectedTile() {
         return;
     }
 
-    const nextTeam = activeTeam === "red" ? "blue" : "red";
-    endTurn(`${message} <strong>${teamLabel(nextTeam)}</strong> is now up.`);
+    if (!guessedOwnColor) {
+        const nextTeam = activeTeam === "red" ? "blue" : "red";
+        endTurn(`${message} Wrong side ends the turn. <strong>${teamLabel(nextTeam)}</strong> is now up.`);
+        return;
+    }
+
+    state.guessesRemaining -= 1;
+    if (state.guessesRemaining <= 0) {
+        const nextTeam = activeTeam === "red" ? "blue" : "red";
+        endTurn(`${message} Turn complete. <strong>${teamLabel(nextTeam)}</strong> is now up.`);
+        return;
+    }
+
+    state.selectedIndex = null;
+    render();
+    saveState();
 }
 
 function undoLastReveal() {
@@ -392,9 +363,7 @@ function renderLog() {
 }
 
 function renderStatus() {
-    const clueText = state.currentClue
-        ? `Current clue: ${state.currentClue.toUpperCase()} ${state.clueCount}`
-        : "Add a clue, then reveal one guess.";
+    const clueText = `${state.guessesRemaining} guess${state.guessesRemaining === 1 ? "" : "es"} remaining this turn.`;
 
     elements.turnTeam.textContent = teamLabel(state.currentTeam);
     elements.turnNote.textContent = clueText;
@@ -403,15 +372,14 @@ function renderStatus() {
     elements.redScore.textContent = String(state.score.red);
     elements.blueScore.textContent = String(state.score.blue);
     elements.selectedWord.textContent = state.selectedIndex === null ? "None" : state.words[state.selectedIndex];
-    elements.boardSubtitle.textContent = `${teamLabel(state.startingTeam)} started this round. Revealing a guess automatically passes play to ${teamLabel(state.currentTeam === "red" ? "blue" : "red")}.`;
-    elements.scoreNote.textContent = `Persists on this device. Active pack: ${elements.wordPackSelect.options[elements.wordPackSelect.selectedIndex].text}.`;
+    elements.boardSubtitle.textContent = `${teamLabel(state.startingTeam)} started this round. ${teamLabel(state.currentTeam)} is currently up. Correct guesses keep the turn alive until the number runs out.`;
+    elements.scoreNote.textContent = `Persists on this device. Word pool: ${MASTER_WORDS.length} built-in words.`;
     elements.confirmGuessButton.disabled = state.selectedIndex === null || Boolean(state.winner);
     elements.undoButton.disabled = state.history.length === 0;
     setTurnTheme();
 }
 
 function render() {
-    updatePackControls();
     renderBoard();
     renderLog();
     renderStatus();
@@ -427,14 +395,12 @@ function saveState() {
         startingTeam: state.startingTeam,
         redRemaining: state.redRemaining,
         blueRemaining: state.blueRemaining,
-        currentClue: state.currentClue,
-        clueCount: state.clueCount,
+        turnGuessLimit: state.turnGuessLimit,
+        guessesRemaining: state.guessesRemaining,
         log: state.log,
         history: state.history,
         winner: state.winner,
         score: state.score,
-        wordPack: state.wordPack,
-        customWords: state.customWords,
         peekActive: state.peekActive
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -442,6 +408,7 @@ function saveState() {
 
 function loadSavedState() {
     const raw = window.localStorage.getItem(STORAGE_KEY)
+        || window.localStorage.getItem(PREVIOUS_STORAGE_KEY_V3)
         || window.localStorage.getItem(PREVIOUS_STORAGE_KEY)
         || window.localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) {
@@ -464,6 +431,7 @@ function loadSavedState() {
             return;
         }
 
+        const legacyGuessLimit = Number.parseInt(saved.clueCount, 10) || 1;
         Object.assign(state, {
             words: saved.words,
             assignments: saved.assignments,
@@ -473,17 +441,16 @@ function loadSavedState() {
             startingTeam: saved.startingTeam || "red",
             redRemaining: saved.redRemaining ?? 8,
             blueRemaining: saved.blueRemaining ?? 9,
-            currentClue: saved.currentClue || "",
-            clueCount: saved.clueCount || "1",
+            turnGuessLimit: saved.turnGuessLimit ?? legacyGuessLimit,
+            guessesRemaining: saved.guessesRemaining ?? saved.turnGuessLimit ?? legacyGuessLimit,
             log: saved.log || [],
             history: saved.history || [],
             winner: saved.winner || null,
             score: saved.score || { red: 0, blue: 0 },
-            wordPack: saved.wordPack || "classic",
-            customWords: saved.customWords || "",
             peekActive: Boolean(saved.peekActive)
         });
 
+        elements.clueCountInput.value = String(state.turnGuessLimit);
         render();
         saveState();
     } catch (error) {
@@ -503,24 +470,14 @@ document.getElementById("changelog-overlay").addEventListener("click", (event) =
         closeChangelog();
     }
 });
-elements.wordPackSelect.addEventListener("change", (event) => {
-    state.wordPack = event.target.value;
-    if (state.wordPack !== "custom") {
-        render();
-        saveState();
-        return;
+elements.clueCountInput.addEventListener("change", () => {
+    const nextLimit = getTurnGuessLimitFromInput();
+    elements.clueCountInput.value = String(nextLimit);
+    state.turnGuessLimit = nextLimit;
+    if (state.selectedIndex === null) {
+        state.guessesRemaining = nextLimit;
     }
-    updatePackControls();
-    saveState();
-});
-elements.customPackInput.addEventListener("input", (event) => {
-    state.customWords = event.target.value;
-    const customCount = parseCustomWords(state.customWords).length;
-    if (state.wordPack === "custom") {
-        elements.scoreNote.textContent = customCount >= 25
-            ? `Persists on this device. Active pack: Custom List (${customCount} words ready).`
-            : `Persists on this device. Custom List needs ${25 - customCount} more unique words.`;
-    }
+    renderStatus();
     saveState();
 });
 
