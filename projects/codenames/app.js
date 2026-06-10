@@ -49,9 +49,10 @@ const WORD_PACKS = {
     ]
 };
 
-const STORAGE_KEY = "codenames-tablet-state-v2";
+const STORAGE_KEY = "codenames-tablet-state-v3";
+const PREVIOUS_STORAGE_KEY = "codenames-tablet-state-v2";
 const LEGACY_STORAGE_KEY = "codenames-tablet-state-v1";
-const APP_VERSION = "1.2";
+const APP_VERSION = "1.3";
 
 const state = {
     words: [],
@@ -63,7 +64,7 @@ const state = {
     redRemaining: 8,
     blueRemaining: 9,
     currentClue: "",
-    clueCount: "",
+    clueCount: "1",
     log: [],
     peekActive: false,
     winner: null,
@@ -84,8 +85,6 @@ const elements = {
     clueInput: document.getElementById("clue-input"),
     clueCountInput: document.getElementById("clue-count-input"),
     confirmGuessButton: document.getElementById("confirm-guess-button"),
-    startTurnButton: document.getElementById("start-turn-button"),
-    passTurnButton: document.getElementById("pass-turn-button"),
     peekButton: document.getElementById("peek-button"),
     peekIndicator: document.getElementById("peek-indicator"),
     newGameButton: document.getElementById("new-game-button"),
@@ -187,8 +186,8 @@ function createNewGame() {
     state.redRemaining = assignments.filter((item) => item === "red").length;
     state.blueRemaining = assignments.filter((item) => item === "blue").length;
     state.currentClue = "";
-    state.clueCount = "";
-    state.log = [`<strong>${teamLabel(startingTeam)}</strong> starts the round.`];
+    state.clueCount = "1";
+    state.log = [`<strong>${teamLabel(startingTeam)}</strong> starts the round. Add a clue and reveal a guess to hand play across.`];
     state.peekActive = false;
     state.winner = null;
     state.history = [];
@@ -209,7 +208,8 @@ function cloneSnapshot() {
         log: [...state.log],
         winner: state.winner,
         currentClue: state.currentClue,
-        clueCount: state.clueCount
+        clueCount: state.clueCount,
+        peekActive: state.peekActive
     };
 }
 
@@ -223,6 +223,7 @@ function restoreSnapshot(snapshot) {
     state.winner = snapshot.winner;
     state.currentClue = snapshot.currentClue;
     state.clueCount = snapshot.clueCount;
+    state.peekActive = snapshot.peekActive ?? false;
     render();
     saveState();
 }
@@ -233,32 +234,36 @@ function selectTile(index) {
     render();
 }
 
-function startTurn() {
+function applyClueFromInputs() {
     const clue = elements.clueInput.value.trim();
     const clueCount = elements.clueCountInput.value.trim();
 
     if (!clue) {
-        state.log.unshift(`Add a clue for <strong>${teamLabel(state.currentTeam)}</strong> before starting the turn.`);
+        state.log.unshift(`Add a clue for <strong>${teamLabel(state.currentTeam)}</strong> before revealing a guess.`);
         renderLog();
         return;
     }
 
+    const normalizedCount = clueCount || "1";
+    if (state.currentClue === clue && state.clueCount === normalizedCount) {
+        return true;
+    }
+
     state.currentClue = clue;
-    state.clueCount = clueCount || "1";
+    state.clueCount = normalizedCount;
     state.log.unshift(`<strong>${teamLabel(state.currentTeam)}</strong> clue: ${clue.toUpperCase()} ${state.clueCount}`);
-    elements.clueInput.value = "";
-    elements.clueCountInput.value = "1";
-    render();
-    saveState();
+    return true;
 }
 
 function endTurn(reason) {
     const nextTeam = state.currentTeam === "red" ? "blue" : "red";
     state.selectedIndex = null;
     state.currentClue = "";
-    state.clueCount = "";
+    state.clueCount = "1";
     state.currentTeam = nextTeam;
     state.log.unshift(reason || `Turn passes to <strong>${teamLabel(nextTeam)}</strong>.`);
+    elements.clueInput.value = "";
+    elements.clueCountInput.value = "1";
     render();
     saveState();
 }
@@ -285,6 +290,7 @@ function closeChangelog() {
 
 function revealSelectedTile() {
     if (state.selectedIndex === null || state.winner) return;
+    if (!applyClueFromInputs()) return;
 
     const index = state.selectedIndex;
     const type = state.assignments[index];
@@ -292,18 +298,13 @@ function revealSelectedTile() {
     state.history.push(cloneSnapshot());
     state.revealed[index] = true;
 
-    let turnShouldEnd = false;
     const activeTeam = state.currentTeam;
     let message = `<strong>${teamLabel(activeTeam)}</strong> revealed ${word.toUpperCase()}: ${typeLabel(type)}.`;
 
     if (type === "red") {
         state.redRemaining -= 1;
-        if (activeTeam !== "red") turnShouldEnd = true;
     } else if (type === "blue") {
         state.blueRemaining -= 1;
-        if (activeTeam !== "blue") turnShouldEnd = true;
-    } else if (type === "neutral") {
-        turnShouldEnd = true;
     } else if (type === "assassin") {
         const winner = activeTeam === "red" ? "blue" : "red";
         state.log.unshift(message);
@@ -329,15 +330,8 @@ function revealSelectedTile() {
         return;
     }
 
-    if (turnShouldEnd) {
-        const nextTeam = activeTeam === "red" ? "blue" : "red";
-        endTurn(`${message} Turn passes to <strong>${teamLabel(nextTeam)}</strong>.`);
-        return;
-    }
-
-    state.selectedIndex = null;
-    render();
-    saveState();
+    const nextTeam = activeTeam === "red" ? "blue" : "red";
+    endTurn(`${message} <strong>${teamLabel(nextTeam)}</strong> is now up.`);
 }
 
 function undoLastReveal() {
@@ -357,22 +351,11 @@ function setPeekActive(active) {
     elements.peekButton.setAttribute("aria-pressed", String(active));
     elements.peekIndicator.hidden = !active;
     renderBoard();
+    saveState();
 }
 
-function attachPeekEvents() {
-    const activate = (event) => {
-        event.preventDefault();
-        setPeekActive(true);
-    };
-    const deactivate = () => setPeekActive(false);
-
-    ["pointerdown", "mousedown", "touchstart"].forEach((eventName) => {
-        elements.peekButton.addEventListener(eventName, activate, { passive: false });
-    });
-
-    ["pointerup", "pointerleave", "pointercancel", "mouseup", "touchend", "touchcancel"].forEach((eventName) => {
-        elements.peekButton.addEventListener(eventName, deactivate);
-    });
+function togglePeek() {
+    setPeekActive(!state.peekActive);
 }
 
 function renderBoard() {
@@ -401,7 +384,7 @@ function renderBoard() {
 
 function renderLog() {
     elements.turnLog.innerHTML = "";
-    state.log.slice(0, 12).forEach((entry) => {
+    state.log.slice(0, 10).forEach((entry) => {
         const item = elements.logItemTemplate.content.firstElementChild.cloneNode(true);
         item.innerHTML = entry;
         elements.turnLog.appendChild(item);
@@ -411,7 +394,7 @@ function renderLog() {
 function renderStatus() {
     const clueText = state.currentClue
         ? `Current clue: ${state.currentClue.toUpperCase()} ${state.clueCount}`
-        : "Give a clue, then choose one tile.";
+        : "Add a clue, then reveal one guess.";
 
     elements.turnTeam.textContent = teamLabel(state.currentTeam);
     elements.turnNote.textContent = clueText;
@@ -420,7 +403,7 @@ function renderStatus() {
     elements.redScore.textContent = String(state.score.red);
     elements.blueScore.textContent = String(state.score.blue);
     elements.selectedWord.textContent = state.selectedIndex === null ? "None" : state.words[state.selectedIndex];
-    elements.boardSubtitle.textContent = `${teamLabel(state.startingTeam)} started this round. ${teamLabel(state.currentTeam)} is currently up.`;
+    elements.boardSubtitle.textContent = `${teamLabel(state.startingTeam)} started this round. Revealing a guess automatically passes play to ${teamLabel(state.currentTeam === "red" ? "blue" : "red")}.`;
     elements.scoreNote.textContent = `Persists on this device. Active pack: ${elements.wordPackSelect.options[elements.wordPackSelect.selectedIndex].text}.`;
     elements.confirmGuessButton.disabled = state.selectedIndex === null || Boolean(state.winner);
     elements.undoButton.disabled = state.history.length === 0;
@@ -451,13 +434,16 @@ function saveState() {
         winner: state.winner,
         score: state.score,
         wordPack: state.wordPack,
-        customWords: state.customWords
+        customWords: state.customWords,
+        peekActive: state.peekActive
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 
 function loadSavedState() {
-    const raw = window.localStorage.getItem(STORAGE_KEY) || window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+        || window.localStorage.getItem(PREVIOUS_STORAGE_KEY)
+        || window.localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) {
         createNewGame();
         return;
@@ -488,13 +474,14 @@ function loadSavedState() {
             redRemaining: saved.redRemaining ?? 8,
             blueRemaining: saved.blueRemaining ?? 9,
             currentClue: saved.currentClue || "",
-            clueCount: saved.clueCount || "",
+            clueCount: saved.clueCount || "1",
             log: saved.log || [],
             history: saved.history || [],
             winner: saved.winner || null,
             score: saved.score || { red: 0, blue: 0 },
             wordPack: saved.wordPack || "classic",
-            customWords: saved.customWords || ""
+            customWords: saved.customWords || "",
+            peekActive: Boolean(saved.peekActive)
         });
 
         render();
@@ -507,19 +494,14 @@ function loadSavedState() {
 
 elements.newGameButton.addEventListener("click", createNewGame);
 elements.undoButton.addEventListener("click", undoLastReveal);
-elements.startTurnButton.addEventListener("click", startTurn);
 elements.confirmGuessButton.addEventListener("click", revealSelectedTile);
+elements.peekButton.addEventListener("click", togglePeek);
 document.getElementById("btn-changelog").addEventListener("click", openChangelog);
 document.getElementById("btn-changelog-close").addEventListener("click", closeChangelog);
 document.getElementById("changelog-overlay").addEventListener("click", (event) => {
     if (event.target.id === "changelog-overlay") {
         closeChangelog();
     }
-});
-elements.passTurnButton.addEventListener("click", () => {
-    if (state.winner) return;
-    const nextTeam = state.currentTeam === "red" ? "blue" : "red";
-    endTurn(`Turn ends. <strong>${teamLabel(nextTeam)}</strong> is up.`);
 });
 elements.wordPackSelect.addEventListener("change", (event) => {
     state.wordPack = event.target.value;
@@ -553,5 +535,4 @@ window.addEventListener("keydown", (event) => {
 });
 
 document.getElementById("version-badge").textContent = `v${APP_VERSION}`;
-attachPeekEvents();
 loadSavedState();

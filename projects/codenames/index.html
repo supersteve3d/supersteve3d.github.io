@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Codenames Tablet</title>
-    <meta name="description" content="A tablet-first Codenames board with a hold-to-peek spymaster key, turn tracking, and local game state.">
+    <meta name="description" content="A tablet-first Codenames board with a toggleable spymaster key, automatic team switching, and local game state.">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -21,7 +21,7 @@
                     <h1>Codenames on one screen.</h1>
                     <span id="version-badge" class="version-badge">v1.2</span>
                 </div>
-                <p class="hero-text">Guessers stay on the public board. Spymasters can hold the secret key button to peek at the color map without needing the physical game.</p>
+                <p class="hero-text">Guessers stay on the public board. Spymasters can toggle the secret key overlay on the same board without needing the physical game.</p>
             </div>
 
             <div class="hero-actions">
@@ -65,7 +65,7 @@
                 <section class="panel">
                     <div class="panel-heading">
                         <h2>Round Controls</h2>
-                        <p>Use this like the tabletop moderator panel.</p>
+                        <p>Everything needed for a round, with no extra screens.</p>
                     </div>
 
                     <div class="pack-grid">
@@ -97,23 +97,21 @@
                     </div>
 
                     <div class="button-stack">
-                        <button id="start-turn-button" class="primary-button" type="button">Start Turn</button>
-                        <button id="confirm-guess-button" class="secondary-button" type="button" disabled>Reveal Selected Guess</button>
-                        <button id="pass-turn-button" class="ghost-button" type="button">End Turn</button>
+                        <button id="confirm-guess-button" class="primary-button" type="button" disabled>Reveal Selected Guess</button>
                     </div>
 
                     <div class="peek-panel">
                         <button id="peek-button" class="peek-button" type="button" aria-pressed="false">
-                            Hold For Secret Key
+                            Secret Key Toggle
                         </button>
-                        <p class="peek-help">Press and hold on tablet or mouse to overlay the spymaster colors. Release to hide them.</p>
+                        <p class="peek-help">Tap once to show the spymaster colors on the main board. Tap again to hide them.</p>
                     </div>
                 </section>
 
                 <section class="panel">
                     <div class="panel-heading">
                         <h2>Turn Log</h2>
-                        <p>Clues and reveals stay visible for the whole round.</p>
+                        <p>Recent clues and reveals stay visible.</p>
                     </div>
                     <ol id="turn-log" class="turn-log" aria-live="polite"></ol>
                 </section>
@@ -152,6 +150,13 @@
                 <button id="btn-changelog-close" class="floating-close" type="button" aria-label="Close changelog">&times;</button>
             </div>
             <div class="changelog-list">
+                <article class="changelog-item">
+                    <span class="changelog-version">v1.3</span>
+                    <div>
+                        <h3>Cleaner single-screen flow</h3>
+                        <p>Switched the secret key to a stronger toggle overlay, removed manual start and end turn buttons, and made reveals automatically pass play to the other team.</p>
+                    </div>
+                </article>
                 <article class="changelog-item">
                     <span class="changelog-version">v1.2</span>
                     <div>
